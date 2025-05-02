@@ -45,6 +45,7 @@ int Window::parse_command_line(int argc, char *argv[]) {
         printf("Usage: ./graph  a  b  n  func_id \n");
         return -1;
     }
+    h = (b0 - a0) / 2;
     //a = a0; b = b0;
     return 0;
 }
@@ -157,12 +158,12 @@ double Window::max_func(int func_id, double (*f)(double)) {
 // init_memory необходима для формирования массивов из n чисел, если n изменяется
 
 void Window::recalculate() {
-    //double max_f = 0;
+    double max_f = 0;
     if (n <= fifty) {
         for (int i = 0; i < n; i++) {
             if (p != 0 && i == n / 2) {
-                //max_f = max_func(func_id, f);
-                y_1[i] = f(x_1[i]) /*  + p * 0.01 * max_f */;
+                max_f = max_func(func_id, f);
+                y_1[i] = f(x_1[i]) + p * 0.1 * max_f;
             }
             else {
                 y_1[i] = f(x_1[i]);
@@ -173,8 +174,8 @@ void Window::recalculate() {
 
     for (int i = 0; i < n; i++) {
         if (p != 0 && i == n / 2) {
-            //max_f = max_func(func_id, f);
-            y_2[i] = f(x_2[i]) /* + p * 0.01 * max_f */;
+            max_f = max_func(func_id, f);
+            y_2[i] = f(x_2[i]) + p * 0.1 * max_f;
         }
         else {
             y_2[i] = f(x_2[i]);
@@ -282,7 +283,7 @@ void Window::zoom_in() {
     a = center - h;
     b = center + h; */
     zoom += 1;
-    // чистим память
+    h = h / 2;
     update();
 }
 
@@ -293,9 +294,9 @@ void Window::zoom_out() {
     b = center + h; */
     if (zoom > 0) {
         zoom -= 1;
+        h = h * 2;
         update();
     }
-    // чистим память
 }
 
 void Window::increase_n() {         // вероятно нельзя до бесконечности повышать
@@ -326,9 +327,11 @@ void Window::decrease_p() {
 }
 
 QPointF Window::l2g(double x_loc, double y_loc, double y_min, double y_max) {
-    //double a1 = 0.5 * ()
-    double a = 0.5 * (a0 + b0 - (b0 - a0) / (1ll << zoom));
-    double b = 0.5 * (a0 + b0 + (b0 - a0) / (1ll << zoom));
+    /* double a = 0.5 * (a0 + b0 - (b0 - a0) / (1ll << zoom));
+    double b = 0.5 * (a0 + b0 + (b0 - a0) / (1ll << zoom)); */
+
+    double a = (a0 + b0) / 2 - h;
+    double b = (a0 + b0) / 2 + h;
     //if (y_max - y_min < 1e-5) y_max = 1e-5;
     double x_gl = (x_loc - a) / (b - a) * width();
     double y_gl = (y_max - y_loc) / (y_max - y_min) * height();
@@ -344,11 +347,10 @@ void Window::paintEvent(QPaintEvent *) {
 
     double x1, x2, y1, y2;
     double max_y = f(a0), min_y = f(a0);
-    /* double delta_y, delta_x = (b - a) / width(); */
 
-    double delta_y, delta_x = (b0 - a0) / (1ll << zoom) / width (); // MONITOR_SIZE_W
-    double a = 0.5 * (a0 + b0 - (b0 - a0) / (1ll << zoom));
-    double b = 0.5 * (a0 + b0 + (b0 - a0) / (1ll << zoom));
+    double delta_y, delta_x = 2 * h / width();
+    double a = (a0 + b0) / 2 - h;
+    double b = (a0 + b0) / 2 + h;
 
     QPen pen_black(Qt::black, 2, Qt::SolidLine);
     QPen pen_red(Qt::red, 3, Qt::SolidLine);

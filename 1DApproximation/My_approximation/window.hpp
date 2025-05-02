@@ -18,6 +18,7 @@ private:
     int zoom = 0;
     double a0;
     double b0;
+    double h;
     int /* size_t */ n;
     int /* size_t */ p = 0;
 
