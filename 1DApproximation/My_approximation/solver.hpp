@@ -128,6 +128,8 @@ int bin_search(double x, double *a, int n) {
     return result;
 }
 
+
+
 // solve_2
 // какие массивы должны быть аргументами на каких местах?
 // передаем массив f_x[] как "y_2", x как "x_2"

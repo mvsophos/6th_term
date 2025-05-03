@@ -209,6 +209,8 @@ void Window::init_memory() {
 
 
 
+
+
 int Window::enough_memory() {
   // Выделение памяти
   if ( (x_1    = new double[pamyat]) == nullptr     // первое приближение

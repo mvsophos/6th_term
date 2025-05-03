@@ -59,7 +59,6 @@ int main(int argc, char *argv[]) {
     action->setShortcut(QString("Ctrl+X"));
 
 
-
     tool_bar->setMaximumHeight(30);
 
     window->setMenuBar(tool_bar);
