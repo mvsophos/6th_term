@@ -222,8 +222,7 @@ int Window::enough_memory() {
     || (ksi    = new double[pamyat]) == nullptr
     || (a1     = new double[pamyat]) == nullptr
     || (c1     = new double[pamyat]) == nullptr
-    || (d1     = new double[pamyat]) == nullptr
-    || (mas_4n = new double[4 * pamyat]) == nullptr)        // это массив c
+    || (d1     = new double[pamyat]) == nullptr)
     {
         if (x_1    != nullptr) delete [] x_1;
         if (y_1    != nullptr) delete [] y_1;
@@ -231,19 +230,17 @@ int Window::enough_memory() {
         if (z      != nullptr) delete [] z;
         if (x_2    != nullptr) delete [] x_2;
         if (y_2    != nullptr) delete [] y_2;
-        if (mas_4n != nullptr) delete [] mas_4n;
+        if (c      != nullptr) delete [] c;
+        if (v      != nullptr) delete [] v;
+        if (ksi    != nullptr) delete [] ksi;
+        if (a1     != nullptr) delete [] a1;
+        if (c1     != nullptr) delete [] c1;
+        if (d1     != nullptr) delete [] d1;
         QMessageBox::warning (0, "Error", "Not enough memory!");
         return -2;
     }
     return 0;
 }
-
-/*     c = (double*)malloc(3 * n * sizeof(double));
-	v = (double*)malloc((n + 1) * sizeof(double));
-	ksi = (double*)malloc((n + 1) * sizeof(double));
-	a1 = (double*)malloc((n + 1) * sizeof(double));
-	c1 = (double*)malloc(n * sizeof(double));
-	d1 = (double*)malloc(n * sizeof(double)); */
 
 int Window::delete_memory() {
     if (x_1 != nullptr) delete[] x_1;
@@ -252,7 +249,12 @@ int Window::delete_memory() {
     if (z != nullptr) delete[] z;
     if (x_2 != nullptr) delete[] x_2;
     if (y_2 != nullptr) delete[] y_2;
-    if (mas_4n != nullptr) delete[] mas_4n;
+    if (c      != nullptr) delete [] c;
+    if (v      != nullptr) delete [] v;
+    if (ksi    != nullptr) delete [] ksi;
+    if (a1     != nullptr) delete [] a1;
+    if (c1     != nullptr) delete [] c1;
+    if (d1     != nullptr) delete [] d1;
     return 0;
 }
 
