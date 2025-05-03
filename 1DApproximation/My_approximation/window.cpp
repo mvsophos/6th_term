@@ -63,37 +63,37 @@ void Window::set_func() {
     case 0:
         f_name = "k = 0, f(x) = 1";
         f = f_0;
-        dd = dd_0;
+        dd = d_0;
         break;
     case 1:
         f_name = "k = 1, f(x) = x";
         f = f_1;
-        dd = dd_1;
+        dd = d_1;
         break;
     case 2:
         f_name = "k = 2, f(x) = x ** 2";
         f = f_2;
-        dd = dd_2;
+        dd = d_2;
         break;
     case 3:
         f_name = "k = 3, f(x) = x ** 3";
         f = f_3;
-        dd = dd_3;
+        dd = d_3;
         break;
     case 4:
         f_name = "k = 4, f(x) = x ** 4";
         f = f_4;
-        dd = dd_4;
+        dd = d_4;
         break;
     case 5:
         f_name = "k = 5, f(x) = exp(x)";
         f = f_5;
-        dd = dd_5;
+        dd = d_5;
         break;
     case 6:
         f_name = "k = 6, f(x) = 1 / (25 * x ** 2 + 1)";
         f = f_6;
-        dd = dd_6;
+        dd = d_6;
         break;
     }
 }
@@ -182,7 +182,10 @@ void Window::recalculate() {
         }
     }
 
-    solve_2(x_2, y_2, mas_4n, n, dd(x_2[0]), dd(x_2[n - 1]));
+    double d0 = dd(x_2[0]), dn_1 = dd(x_2[n - 1]);
+
+    solve_2(n, a0, b0, x_2, y_2, c, v, ksi, a1, c1, d1, d0, dn_1);
+    //solve_2(x_2, y_2, mas_4n, n, dd(x_2[0]), dd(x_2[n - 1]));
 }
 
 // надо это чуть изменить, x_1 должно быть равномерной
@@ -208,13 +211,19 @@ void Window::init_memory() {
 
 int Window::enough_memory() {
   // Выделение памяти
-  if ( (x_1    = new double[pamyat]) == nullptr
-    || (y_1    = new double[pamyat]) == nullptr
-    || (alpha  = new double[pamyat]) == nullptr
-    || (z      = new double[pamyat]) == nullptr
-    || (x_2    = new double[pamyat]) == nullptr
-    || (y_2    = new double[pamyat]) == nullptr
-    || (mas_4n = new double[4 * pamyat]) == nullptr)
+  if ( (x_1    = new double[pamyat]) == nullptr     // первое приближение
+    || (y_1    = new double[pamyat]) == nullptr     // первое приближение
+    || (alpha  = new double[pamyat]) == nullptr     // первое приближение
+    || (z      = new double[pamyat]) == nullptr     // первое приближение
+    || (x_2    = new double[pamyat]) == nullptr     // второе приближение
+    || (y_2    = new double[pamyat]) == nullptr     // второе приближение
+    || (c      = new double[3 * pamyat]) == nullptr
+    || (v      = new double[pamyat]) == nullptr
+    || (ksi    = new double[pamyat]) == nullptr
+    || (a1     = new double[pamyat]) == nullptr
+    || (c1     = new double[pamyat]) == nullptr
+    || (d1     = new double[pamyat]) == nullptr
+    || (mas_4n = new double[4 * pamyat]) == nullptr)        // это массив c
     {
         if (x_1    != nullptr) delete [] x_1;
         if (y_1    != nullptr) delete [] y_1;
@@ -228,6 +237,13 @@ int Window::enough_memory() {
     }
     return 0;
 }
+
+/*     c = (double*)malloc(3 * n * sizeof(double));
+	v = (double*)malloc((n + 1) * sizeof(double));
+	ksi = (double*)malloc((n + 1) * sizeof(double));
+	a1 = (double*)malloc((n + 1) * sizeof(double));
+	c1 = (double*)malloc(n * sizeof(double));
+	d1 = (double*)malloc(n * sizeof(double)); */
 
 int Window::delete_memory() {
     if (x_1 != nullptr) delete[] x_1;
@@ -382,7 +398,8 @@ void Window::paintEvent(QPaintEvent *) {
             if (y1 > max_y) max_y = y1;
         }
         if (graph_2) {
-            y1 = Pf_2(x1, a0, b0, n, x_2, mas_4n);          //
+            //y1 = Pf_2(x1, a0, b0, n, x_2, mas_4n);          //
+            y1 = Pf_2(x1, c, ksi, n);
             if (y1 < min_y) min_y = y1;
             if (y1 > max_y) max_y = y1;
         }
@@ -393,7 +410,8 @@ void Window::paintEvent(QPaintEvent *) {
                 if (y1 > max_y) max_y = y1;
             }
 
-            y1 = fabs( f(x1) - Pf_2(x1, a0, b0, n, x_2, mas_4n) );                   //
+            //y1 = fabs( f(x1) - Pf_2(x1, a0, b0, n, x_2, mas_4n) );                   //
+            y1 = fabs( f(x1) - Pf_2(x1, c, ksi, n) );
             if (y1 < min_y) min_y = y1;
             if (y1 > max_y) max_y = y1;
         }
@@ -424,7 +442,7 @@ void Window::paintEvent(QPaintEvent *) {
     if (a < 0 && b > 0) painter.drawLine(L2G(0, min_y), L2G(0, max_y));
     
     //painter.drawText( width() - 100, 20, "Legend:" );
-    painter.drawText( 10, height() - 100, "Legend:" );
+    //painter.drawText( 10, height() - 100, "Legend:" );
 
 
 
@@ -466,14 +484,14 @@ void Window::paintEvent(QPaintEvent *) {
         painter.drawText( 10, height() - 40, "Approximation 2" );
 
         x1 = a;
-        y1 = Pf_2(x1, a0, b0, n, x_2, mas_4n);
+        y1 = Pf_2(x1, c, ksi, n);
         for (x2 = a + delta_x; x2 - b < 1.e-6; x2 += delta_x) {
-            y2 = Pf_2(x2, a, b, n, x_2, mas_4n);
+            y2 = Pf_2(x2, c, ksi, n);
             painter.drawLine(L2G(x1, y1), L2G(x2, y2));
             x1 = x2; y1 = y2;
         }
         x2 = b;
-        y2 = Pf_2(x2, a, b, n, x_2, mas_4n);
+        y2 = Pf_2(x2, c, ksi, n);
         painter.drawLine(L2G(x1, y1), L2G(x2, y2));
     }
 
@@ -499,14 +517,14 @@ void Window::paintEvent(QPaintEvent *) {
         painter.drawText( 10, height() - 60, "Difference 2" );
 
         x1 = a;
-        y1 = fabs(f(x1) - Pf_2(x1, a0, b0, n, x_2, mas_4n));
+        y1 = fabs(f(x1) - Pf_2(x1, c, ksi, n));
         for (x2 = a + delta_x; x2 - b < 1.e-6; x2 += delta_x) {
-            y2 = fabs(f(x2) - Pf_2(x2, a0, b0, n, x_2, mas_4n));
+            y2 = fabs(f(x2) - Pf_2(x2, c, ksi, n));
             painter.drawLine(L2G(x1, y1), L2G(x2, y2));
             x1 = x2; y1 = y2;
         }
         x2 = b;
-        y2 = fabs(f(x2) - Pf_2(x2, a0, b0, n, x_2, mas_4n));
+        y2 = fabs(f(x2) - Pf_2(x2, c, ksi, n));
         painter.drawLine(L2G(x1, y1), L2G(x2, y2));
     }
 

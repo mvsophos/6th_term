@@ -2,38 +2,31 @@
 #include <cmath>
 
 
-
-
-double dd_0(double x) {
-  (void) x;
-  return 0;
+double d_0(double /* x */) {
+    return 0;
+}
+double d_1(double /* x */) {
+    return 1.;
+}
+double d_2(double x) {
+    return 2 * x;
+}
+double d_3(double x) {
+    return 3 * x * x;
+}
+double d_4(double x) {
+    return 4 * x * x * x;
+}
+double d_5(double x) {
+    return exp(x);
+}
+double d_6(double x) {
+    return -50 * x / ((25 * x * x + 1) * (25 * x * x + 1));
 }
 
-double dd_1(double x) {
-  (void) x;
-  return 0;
-}
 
-double dd_2(double x) {
-  (void) x;
-  return 2;
-}
 
-double dd_3(double x) {
-  return 6 * x;
-}
 
-double dd_4(double x) {
-  return 12 * x * x;
-}
-
-double dd_5(double x) {
-  return exp(x);
-}
-
-double dd_6(double x) {
-  return (3750 * x * x - 50) / (25 * x * x + 1) / (25 * x * x + 1) / (25 * x * x + 1);
-}
 
 // Pf_1 вызывается отдельно на основе массива альфа, в самом начале вызывается калькулятор, а он вызывает аппроксимацию Чебышева
 // калькуляторе мы считаем точки в которых считаем массивы, в этой проге init_memory находит точки в которых надо аппроксимировать
@@ -100,77 +93,30 @@ double Pf_1 (double x, double a, double b, int n, double x_mas[], double alpha[]
     }
 }
 
-void solve_2 (double x[], double f_x[], double mas_4n[], int n, double dd0, double ddn)
-{
-  (void) x;
-  double f_xk_xk1, f_xk1_xk2, f_xk1_xk, dk1, dk;
-  int k;
-  if (n == 2)
-    {
-      k = 0;
-      f_xk_xk1 = (f_x[k+1] - f_x[k]) / (x[k+1] - x[k]);
 
-      double a = 3 * f_xk_xk1 - 0.5 * dd0 * (x[k+1] - x[k]);
-      double b = 3 * f_xk_xk1 + 0.5 * ddn * (x[n-1] - x[n-2]); // ddn1
-      dk = (2 * a - b) / 3;
-      dk1 = (2 * b - a) / 3;
-      
-      mas_4n[0] = f_x[0];
-      mas_4n[1] = dk;
-      mas_4n[2] = (3 * f_xk_xk1 - 2 * dk - dk1) / (x[k+1] - x[k]);
-      mas_4n[3] = (dk + dk1 - 2 * f_xk_xk1) / (x[k+1] - x[k]) / (x[k+1] - x[k]);
-      
-    }
-  else
-  if (n > 2)
-    {
-      k = 0;
-      f_xk_xk1 = (f_x[k+1] - f_x[k]) / (x[k+1] - x[k]);
-      f_xk1_xk2 = (f_x[k+2] - f_x[k+1]) / (x[k+2] - x[k+1]);
 
-      dk1 = (fabs(f_xk_xk1) < fabs(f_xk1_xk2) ? f_xk_xk1 : f_xk1_xk2);
-      dk = 0.5 * (- dk1 + 3 * f_xk_xk1 - 0.5 * dd0 * (x[k+1] - x[k]));
-      
-      mas_4n[0] = f_x[0];
-      mas_4n[1] = dk;
-      mas_4n[2] = (3 * f_xk_xk1 - 2 * dk - dk1) / (x[k+1] - x[k]);
-      mas_4n[3] = (dk + dk1 - 2 * f_xk_xk1) / (x[k+1] - x[k]) / (x[k+1] - x[k]);
 
-      f_xk_xk1 = f_xk1_xk2;
-      f_xk1_xk = f_xk_xk1;
-      dk = dk1;
-      for (k = 1; k < n - 2; k++) // #### n-1
-        {
-          f_xk1_xk2 = (f_x[k+2] - f_x[k+1]) / (x[k+2] - x[k+1]);
-          if (f_xk_xk1 * f_xk1_xk2 > 0)
-            {
-              dk1 = (fabs(f_xk_xk1) < fabs(f_xk1_xk2) ? f_xk_xk1 : f_xk1_xk2);
-            }
-          else
-            {
-              dk1 = 0;
-            }
-          
-          mas_4n[4*k + 0] = f_x[k];
-          mas_4n[4*k + 1] = dk;
-          mas_4n[4*k + 2] = (3 * f_xk_xk1 - 2 * dk - dk1) / (x[k+1] - x[k]);
-          mas_4n[4*k + 3] = (dk + dk1 - 2 * f_xk_xk1) / (x[k+1] - x[k]) / (x[k+1] - x[k]);
 
-          f_xk_xk1 = f_xk1_xk2;
-          f_xk1_xk = f_xk_xk1;
-          dk = dk1;
-        }
-      k = n - 2;
-      dk1 = 0.5 * (- dk + 3 * f_xk1_xk + 0.5 * ddn * (x[n-1] - x[n-2])); // ddn1
 
-      mas_4n[4*k + 0] = f_x[n-2];
-      mas_4n[4*k + 1] = dk;
-      mas_4n[4*k + 2] = (3 * f_xk1_xk - 2 * dk - dk1) / (x[k+1] - x[k]);
-      mas_4n[4*k + 3] = (dk + dk1 - 2 * f_xk1_xk) / (x[k+1] - x[k]) / (x[k+1] - x[k]);
-    }
+
+// чисто для второго приближения
+void solver_system(int n, double *a, double *c, double *d, double *b, double *x) {
+	int i;
+
+	c[0] /= a[0];
+	for (i = 1; i < n - 1; i++) {
+		a[i] -= d[i - 1] * c[i - 1];
+		c[i] /= a[i];
+	}
+	a[n - 1] -= d[n - 2] * c[n - 2];
+
+	x[0] = b[0] / a[0];
+	for (i = 1; i < n; i++) x[i] = (b[i] - d[i - 1] * x[i - 1]) / a[i];
+
+	for (i = n - 2; i >= 0; i--) x[i] -= c[i] * x[i + 1];
 }
 
-int bin_search_to_add (double x, double *a, int n) {
+int bin_search(double x, double *a, int n) {
     int result = 0;
     int r = n;
     int s = (result + r) / 2;
@@ -182,51 +128,59 @@ int bin_search_to_add (double x, double *a, int n) {
     return result;
 }
 
-double Pf_2 (double x, double a, double b, int n, double x_mas[], double mas_4n[])
-{
-  //printf("PF_02\n");
-  (void) x_mas;
-  (void) a;
-  (void) b;
-  int i;
-  if (n == 2)
-    {
-      //return 0;//alpha[0] + alpha[1] * z * 0.5;
-      i = 0;
-      return mas_4n[4*i] + mas_4n[4*i+1]*(x-x_mas[i]) 
-                         + mas_4n[4*i+2]*(x-x_mas[i])*(x-x_mas[i])
-                         + mas_4n[4*i+3]*(x-x_mas[i])*(x-x_mas[i])*(x-x_mas[i]);
-    }
-  else
-  if (n > 2)
-    {
-      i = bin_search_to_add(x, x_mas, n) - 1;
-      if (i < 0)
-        i = 0;
-      if (i == n - 1)
-        i = n - 2;
-      return mas_4n[4*i] + mas_4n[4*i+1]*(x-x_mas[i]) 
-                         + mas_4n[4*i+2]*(x-x_mas[i])*(x-x_mas[i])
-                         + mas_4n[4*i+3]*(x-x_mas[i])*(x-x_mas[i])*(x-x_mas[i]);
-      for (i = 0; i < n-2; i++)
-        if (x_mas[i] <= x && x <= x_mas[i+1])
-          {
-          //printf("PF_02 %10.3e %10.3e %10.3e\n", x_mas[i], x, x_mas[i+1]);
-          return mas_4n[4*i] + mas_4n[4*i+1]*(x-x_mas[i]) 
-                             + mas_4n[4*i+2]*(x-x_mas[i])*(x-x_mas[i])
-                             + mas_4n[4*i+3]*(x-x_mas[i])*(x-x_mas[i])*(x-x_mas[i]);
-          }
-      for (i = 0; i < n-2; i++)
-        if (x_mas[i] <= x && x <= x_mas[i+1])
-          {
-          //printf("PF_02 %10.3e %10.3e %10.3e\n", x_mas[i], x, x_mas[i+1]);
-          return mas_4n[4*i] + mas_4n[4*i+1]*(x-x_mas[i]) 
-                             + mas_4n[4*i+2]*(x-x_mas[i])*(x-x_mas[i])
-                             + mas_4n[4*i+3]*(x-x_mas[i])*(x-x_mas[i])*(x-x_mas[i]);
-          }
-          
-      return mas_4n[4*i] + mas_4n[4*i+1]*(x-x_mas[i]) + mas_4n[4*i+2]*(x-x_mas[i])*(x-x_mas[i]) + mas_4n[4*i+3]*(x-x_mas[i])*(x-x_mas[i])*(x-x_mas[i]);
-    }
-  return 0;
+// solve_2
+// какие массивы должны быть аргументами на каких местах?
+// передаем массив f_x[] как "y_2", x как "x_2"
+//      Coeff_41(n, a, b, x, f_x, c, v, ksi, a1, c1, d1);
+//      double f_41(double t) {return Value_41(t, n, c, ksi);}
+// a1 = mas1, c1 = mas2, d1 = mas3; массив mas_4n заменить на c
+// void Coeff_41(int n, double a, double b, double *x, double *f_x, double *c, double *v, double *ksi, double *a1, double *c1, double *d1) {
+void solve_2(int n, double a, double b, double *x, double *f_x, double *c, double *v, double *ksi, double *a1, double *c1, double *d1, double d0, double dn_1) {
+	int i, j = 0;
+	double tmp1;
+
+	for (i = 1; i < n; i++)
+		ksi[i] = 0.5 * (x[i - 1] + x[i]);
+
+	ksi[0] = a - (ksi[2] - ksi[1]);
+	ksi[n] = b + (ksi[n - 1] - ksi[n - 2]);
+
+	for (i = 1; i < n; i++) {
+		a1[i] = 1.0/(ksi[i] - x[i - 1]) + 1.0/(ksi[i] - ksi[i - 1]) + 1.0/(x[i] - ksi[i]) + 1.0/(ksi[i + 1] - ksi[i]);
+		c1[i] = 1.0/(ksi[i + 1] - x[i]) - 1.0/(ksi[i + 1] - ksi[i]);
+		d1[i - 1] = 1.0/(x[i - 1] - ksi[i - 1]) - 1.0/(ksi[i] - ksi[i - 1]);
+		c[i] = f_x[i - 1] * (1.0/(x[i - 1] - ksi[i - 1]) + 1.0/(ksi[i] - x[i - 1])) + f_x[i] * (1.0/(x[i] - ksi[i]) + 1.0/(ksi[i + 1] - x[i]));
+	}
+
+	a1[0]     = 1. / (ksi[1] -     ksi[0])   - 1. / (x[0] -   ksi[0]);
+	c1[0]     = 1. / (ksi[1] -       x[0])   - 1. / (ksi[1] - ksi[0]);
+	a1[n]     = 1. / (ksi[n] -   x[n - 1])   - 1. / (ksi[n] - ksi[n - 1]);
+	d1[n - 1] = 1. / (ksi[n] - ksi[n - 1])   - 1. / (x[n - 1] - ksi[n - 1]);
+
+	/* c[0] = dd(x[0]) - f_x[0] * (1. / (x[0] - ksi[0]) - 1. / (ksi[1] - x[0]));
+	c[n] = dd(x[n - 1]) - f_x[n - 1] * (1. / (x[n - 1] - ksi[n - 1]) - 1. / (ksi[n] - x[n - 1])); */
+    c[0] = d0   - f_x[0]     * (1. / (x[0]     - ksi[0])     - 1. / (ksi[1] - x[0]));
+	c[n] = dn_1 - f_x[n - 1] * (1. / (x[n - 1] - ksi[n - 1]) - 1. / (ksi[n] - x[n - 1]));
+    // уравнения замыкающие систему, первая производная в граничных условиях
+
+	solver_system(n + 1, a1, c1, d1, c, v);         // j = 0;
+
+	for (i = 0; i < n; i ++) {
+		c[j + 0] = v[i];
+		tmp1 = ((v[i + 1] - f_x[i]) / (ksi[i + 1] - x[i]) - (f_x[i] - v[i]) / (x[i] - ksi[i])) / (ksi[i + 1] - ksi[i]);
+		c[j + 1] = (f_x[i] - v[i]) / (x[i] - ksi[i]) - (x[i] - ksi[i]) * tmp1;
+		c[j + 2] = tmp1;
+		j += 3;
+	}
+}
+
+// x = массив чисел x_2
+double Pf_2(double t, double *c, double *ksi, int n) {
+	int i;
+	//for (i = 0; i < n - 1; i++) if (t <= ksi[i + 1]) break;
+    i = bin_search(t, ksi, n);
+	return  c[3 * i] 
+            + c[3 * i + 1] * (t - ksi[i]) 
+            + c[3 * i + 2] * (t - ksi[i]) * (t - ksi[i]);
 }
 

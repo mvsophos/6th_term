@@ -13,7 +13,7 @@ class Window : public QWidget {
 private:
     int func_id = 0;
     int mode = 0;
-    int pamyat = 2000000;
+    int pamyat = 40000000;
     const char *f_name = nullptr;
     int zoom = 0;
     double a0;
@@ -29,7 +29,8 @@ private:
     // x_1 - это массив точек в которых приближается функция (для Чебышева), x_2 - массив точек в которых приближается функция (для второго метода)
     double *x_1, *y_1;
     double *x_2, *y_2;
-    double *mas_4n, *alpha, *z;
+    double *mas_4n, *alpha, *z;     // mas_4n = c для 2го приближения
+    double *ksi, *c, *v, *a1, *c1, *d1;     // для второго приближения
 
     double (*f)(double);
     double (*dd)(double);
