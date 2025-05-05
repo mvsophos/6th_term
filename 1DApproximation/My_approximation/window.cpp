@@ -4,8 +4,6 @@
 
 #include "window.hpp"
 #include "solver.hpp"
-/* #include "cheba.hpp"
-#include "spline.hpp" */
 
 
 
@@ -185,7 +183,6 @@ void Window::recalculate() {
     double d0 = dd(x_2[0]), dn_1 = dd(x_2[n - 1]);
 
     solve_2(n, a0, b0, x_2, y_2, c, v, ksi, a1, c1, d1, d0, dn_1);
-    //solve_2(x_2, y_2, mas_4n, n, dd(x_2[0]), dd(x_2[n - 1]));
 }
 
 // надо это чуть изменить, x_1 должно быть равномерной
@@ -298,20 +295,12 @@ void Window::change_approx() {
 }
 
 void Window::zoom_in() {
-    /* double center = (a + b) / 2;
-    double h = (b - a) / 4;
-    a = center - h;
-    b = center + h; */
     zoom += 1;
     h = h / 2;
     update();
 }
 
 void Window::zoom_out() {
-    /* double center = (a + b) / 2;
-    double h = (b - a);
-    a = center - h;
-    b = center + h; */
     if (zoom > 0) {
         zoom -= 1;
         h = h * 2;
@@ -347,9 +336,6 @@ void Window::decrease_p() {
 }
 
 QPointF Window::l2g(double x_loc, double y_loc, double y_min, double y_max) {
-    /* double a = 0.5 * (a0 + b0 - (b0 - a0) / (1ll << zoom));
-    double b = 0.5 * (a0 + b0 + (b0 - a0) / (1ll << zoom)); */
-
     double a = (a0 + b0) / 2 - h;
     double b = (a0 + b0) / 2 + h;
     //if (y_max - y_min < 1e-5) y_max = 1e-5;
@@ -360,13 +346,13 @@ QPointF Window::l2g(double x_loc, double y_loc, double y_min, double y_max) {
 
 void Window::paintEvent(QPaintEvent *) {
     QPainter painter(this);
-    //int M = 1080;
     set_func();
 
     //a = a0; b = b0;     // этого не было, а все функции Pf_ были от a и b
 
     double x1, x2, y1, y2;
-    double max_y = f(a0), min_y = f(a0);
+    // double max_y = f(a0), min_y = f(a0);
+    double max_y = f(a0), min_y = 0;
 
     double delta_y, delta_x = 2 * h / width();
     double a = (a0 + b0) / 2 - h;
@@ -402,7 +388,6 @@ void Window::paintEvent(QPaintEvent *) {
             if (y1 > max_y) max_y = y1;
         }
         if (graph_2) {
-            //y1 = Pf_2(x1, a0, b0, n, x_2, mas_4n);          //
             y1 = Pf_2(x1, c, ksi, n);
             if (y1 < min_y) min_y = y1;
             if (y1 > max_y) max_y = y1;
@@ -414,7 +399,6 @@ void Window::paintEvent(QPaintEvent *) {
                 if (y1 > max_y) max_y = y1;
             }
 
-            //y1 = fabs( f(x1) - Pf_2(x1, a0, b0, n, x_2, mas_4n) );                   //
             y1 = fabs( f(x1) - Pf_2(x1, c, ksi, n) );
             if (y1 < min_y) min_y = y1;
             if (y1 > max_y) max_y = y1;

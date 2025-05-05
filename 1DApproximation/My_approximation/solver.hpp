@@ -130,13 +130,6 @@ int bin_search(double x, double *a, int n) {
 
 
 
-// solve_2
-// какие массивы должны быть аргументами на каких местах?
-// передаем массив f_x[] как "y_2", x как "x_2"
-//      Coeff_41(n, a, b, x, f_x, c, v, ksi, a1, c1, d1);
-//      double f_41(double t) {return Value_41(t, n, c, ksi);}
-// a1 = mas1, c1 = mas2, d1 = mas3; массив mas_4n заменить на c
-// void Coeff_41(int n, double a, double b, double *x, double *f_x, double *c, double *v, double *ksi, double *a1, double *c1, double *d1) {
 void solve_2(int n, double a, double b, double *x, double *f_x, double *c, double *v, double *ksi, double *a1, double *c1, double *d1, double d0, double dn_1) {
 	int i, j = 0;
 	double tmp1;
@@ -159,8 +152,6 @@ void solve_2(int n, double a, double b, double *x, double *f_x, double *c, doubl
 	a1[n]     = 1. / (ksi[n] -   x[n - 1])   - 1. / (ksi[n] - ksi[n - 1]);
 	d1[n - 1] = 1. / (ksi[n] - ksi[n - 1])   - 1. / (x[n - 1] - ksi[n - 1]);
 
-	/* c[0] = dd(x[0]) - f_x[0] * (1. / (x[0] - ksi[0]) - 1. / (ksi[1] - x[0]));
-	c[n] = dd(x[n - 1]) - f_x[n - 1] * (1. / (x[n - 1] - ksi[n - 1]) - 1. / (ksi[n] - x[n - 1])); */
     c[0] = d0   - f_x[0]     * (1. / (x[0]     - ksi[0])     - 1. / (ksi[1] - x[0]));
 	c[n] = dn_1 - f_x[n - 1] * (1. / (x[n - 1] - ksi[n - 1]) - 1. / (ksi[n] - x[n - 1]));
     // уравнения замыкающие систему, первая производная в граничных условиях
@@ -181,6 +172,7 @@ double Pf_2(double t, double *c, double *ksi, int n) {
 	int i;
 	//for (i = 0; i < n - 1; i++) if (t <= ksi[i + 1]) break;
     i = bin_search(t, ksi, n);
+    i -= 1;
 	return  c[3 * i] 
             + c[3 * i + 1] * (t - ksi[i]) 
             + c[3 * i + 2] * (t - ksi[i]) * (t - ksi[i]);
