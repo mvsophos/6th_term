@@ -5,14 +5,11 @@
 #include <cmath>
 #include <cstring>
 
-enum various {
-	SUCCESS = 0, ERROR_READ = -1, ERROR_OPEN = -2, SING_MATRIX = -3, ERROR_MEMORY = -4, ERROR = -5
-};
+
 
 // -1 = ошибка чтения фалйа
 // -2 = ошибка открытия файла
 // -3 = аглоритм неприменим
-// -5 = неизвестная ошибка
 
 
 double f(int i, int j, int n, int s) {
@@ -23,34 +20,27 @@ double f(int i, int j, int n, int s) {
 	return -1;	// это не выполнится никогда
 }
 
-int l2g(int m, int i, int p, int q) { // тут вместо q было k
+int l2g(int m, int i, int p, int q) {
 	return (i / m) * m * p + q * m + (i % m);
 }
 
-void set_block(double *A, int i, int j, int n, int m, double *buf, int height, int width) {
-	for (int kh = 0; kh < height; kh++) {
-		for (int kw = 0; kw < width; kw++) {
-			A[(i * m + kh) * n + j * m + kw] = buf[kh * width + kw];
-		}
-	}
+void get_block(double *A, int i, int j, int n, int m, double *bufer, int h, int w) {
+	for (int kh = 0; kh < h; kh++) for (int kw = 0; kw < w; kw++) bufer[kh * w + kw] = A[(i * m + kh) * n + j * m + kw];
 }
 
-void get_block(double *A, int i, int j, int n, int m, double *buf, int height, int width) {
-	for (int kh = 0; kh < height; kh++) {
-		for (int kw = 0; kw < width; kw++) {
-			buf[kh * width + kw] = A[(i * m + kh) * n + j * m + kw];
-		}
-	}
+void set_block(double *A, int i, int j, int n, int m, double *bufer, int h, int w) {
+	for (int kh = 0; kh < h; kh++) for (int kw = 0; kw < w; kw++) A[(i * m + kh) * n + j * m + kw] = bufer[kh * w + kw];
 }
 
-void set_vec(double *B, double *buf, int index, int m, int size) {
-	for (int i = 0; i < size; i++) B[index * m + i] = buf[i];
+void get_vector(double *V1, double *V2, int j, int m, int h) {
+	for (int i = 0; i < h; i++) V2[i] = V1[j * m + i];
 }
 
-void get_vec(double *B, double *buf, int index, int m, int size) {
-	for (int i = 0; i < size; i++) buf[i] = B[index * m + i];
+void set_vector(double *V1, double *V2, int j, int m, int h) {
+	for (int i = 0; i < h; i++) V1[j * m + i] = V2[i];
 }
 
+// для ускорения можно написать циклами
 void change_block_lines(double *A, double *B, int begin, int q, int max, int m, int lines, double *V2, double *V3, double *vec1, double *vec2) {
 	for (int i = begin; i < lines; i++) {
 		get_block(A,   q, i, lines * m, m, V2, m, m);
@@ -59,26 +49,13 @@ void change_block_lines(double *A, double *B, int begin, int q, int max, int m, 
 		set_block(A, max, i, lines * m, m, V2, m, m);
 	}
 
-	get_vec(B, vec1,   q, m, m);
-	get_vec(B, vec2, max, m, m);
-	set_vec(B, vec2,   q, m, m);
-	set_vec(B, vec1, max, m, m);
+	get_vector(B, vec1,   q, m, m);
+	get_vector(B, vec2, max, m, m);
+	set_vector(B, vec2,   q, m, m);
+	set_vector(B, vec1, max, m, m);
 }
 
 
-
-// вычитаем блок размером h*w так: A -= C
-void extract(double *A, double *C, int height, int width) {
-	for (int i = 0; i < height * width; i++) A[i] -= C[i];
-}
-
-void set_vector(double *V1, double *V2, int j, int m, int h) {
-	for (int i = 0; i < h; i++) V1[i] = V2[j * m + i];
-}
-
-void get_vector(double *V1, double *V2, int j, int m, int h) {
-	for (int i = 0; i < h; i++) V2[j * m + i] = V1[i];
-}
 
 int read_array(FILE *file, double *A, int len) {
 	for (int i = 0; i < len; i++) if (fscanf(file, "%lf", A + i) != 1) return -1;
@@ -128,78 +105,72 @@ int print_vector(double *B, int r) {
 	return 0;
 }
 
+/////////////////////////////////////////////////////////////////////////
 int read_matrix(double *A, int n, int m, int lines, int p, int q, double *buf, char *name, MPI_Comm comm) {
 	int main_q = 0;
-	int err = SUCCESS;
+	int err = 0;		// 0 говорит об успехе
 	FILE *fp = nullptr;
 	
 	if (q == main_q) {
 		fp = fopen(name, "r");
-		if (fp == nullptr) err = ERROR_OPEN;
+		if (fp == nullptr) err = -2;
 	}
 		
 	MPI_Bcast(&err, 1, MPI_INT, main_q, comm);
 	
 	if (err != 0) return err;
 		
-	double *block_buf = nullptr;
-	block_buf = new double[m * m];
-	if (block_buf == nullptr) return ERROR_MEMORY;
+	double *bufer = new double[m * m];
 		
-	int b, max_b = (n + m - 1) / m;
+	int i, k = (n + m - 1) / m;
 	
-	int row_size = (m <= n - (max_b - 1) * m ? m : n - (max_b - 1) * m);		// либо m, а если неровно поделилось, то l = n - k * m
-	memset(buf, 0, n * row_size * sizeof(double));
+	int size_of_last_row = (m <= n - (k - 1) * m ? m : n - (k - 1) * m);		// либо m, а если неровно поделилось, то l = n - k * m
+	memset(buf, 0, n * size_of_last_row * sizeof(double));
 	
-	//int blocked_columns_cnt = (n / m) + (n % m != 0);
-	//int col_cnt = blocked_columns_cnt / p + (q < blocked_columns_cnt % p);
+
 	
-	for (b = 0; b < max_b; b++) {
-		int rows = (m <= n - b * m ? m : n - b * m);
-		int height = m;
-		if (n % m != 0 && b == max_b - 1) height = n % m;
+	for (i = 0; i < k; i++) {
+		int rows = (m <= n - i * m ? m : n - i * m);
+		int vsta = m;
+		if ((n % m != 0) && (i == k - 1)) vsta = n % m;
 		if (q == main_q) {
 			err += read_array(fp, buf, n * rows);
-			for (int j = 0; j < max_b; j++) {
+			for (int j = 0; j < k; j++) {
 				int owner = j % p;
-				int width = m;
+				int shir = m;
 				int j_loc = j / p;
-				if (n % m != 0 && j == max_b - 1) width = n % m;
-				get_block(buf, 0, j, n, m, block_buf, height, width);
+				if (n % m != 0 && j == k - 1) shir = n % m;
+				get_block(buf, 0, j, n, m, bufer, vsta, shir);
 				
-				if (owner == q) {
-					set_block(A, b, j_loc, lines * m, m, block_buf, height, width);
-				}
-				else {
-					MPI_Send(block_buf, height * width, MPI_DOUBLE, owner, 0, comm);
-				}
+				if (owner == q) set_block(A, i, j_loc, lines * m, m, bufer, vsta, shir);
+				else MPI_Send(bufer, vsta * shir, MPI_DOUBLE, owner, 0, comm);
 			}
 		}
 		else {
-			for (int j = 0; j < max_b; j++) {
+			for (int j = 0; j < k; j++) {
 				int owner = j % p;
-				int width = m;
+				int shir = m;
 				int j_loc = j / p;
-				if (n % m != 0 && j == max_b - 1)
-					width = n % m;
+				if ((n % m != 0) && (j == k - 1)) shir = n % m;
 				if (owner == q) {
 					MPI_Status st;
-					MPI_Recv (block_buf, height * width, MPI_DOUBLE, main_q, 0, comm, &st);
-					set_block (A, b, j_loc, lines * m, m, block_buf, height, width);
+					MPI_Recv(bufer, vsta * shir, MPI_DOUBLE, main_q, 0, comm, &st);
+					set_block(A, i, j_loc, lines * m, m, bufer, vsta, shir);
 				}
 			}
 		}
 	}
 	if (q == main_q) {
-		fclose (fp);
+		fclose(fp);
 		fp = nullptr;
 	}
-	MPI_Bcast (&err, 1, MPI_INT, main_q, comm);
-	delete [] block_buf;
-	if (err != SUCCESS) return err;
-	return SUCCESS;
+	MPI_Bcast(&err, 1, MPI_INT, main_q, comm);
+	delete [] bufer;
+	if (err != 0) return err;
+	return 0;
 }
 
+/////////////////////////////////////////////////////////////////////////
 // вывод матрицы (main это нулевой поток, ибо он всегда существует)
 int print_matrix(double *A, int n, int m, int r, int k, int lines, int p, int q, double *buf, MPI_Comm comm) {
 	int main = 0, owner;
@@ -226,9 +197,8 @@ int print_matrix(double *A, int n, int m, int r, int k, int lines, int p, int q,
 				}
 			}
 		}
-		if (q == main) printf("\n");
+		if (q == main) printf("\n\n");
 	}
-	printf("\n");
 	return 0;
 }
 
@@ -261,6 +231,7 @@ double norm_of_matrix(double *A, int n, int m, int lines, int p, int q, MPI_Comm
 
 // ДОБАВИТЬ ФУНКЦИИ НЕВЯЗКИ
 
+/////////////////////////////////////////////////////////////////////////
 // C = результат умножения A * B
 int mult_mat_vec(double *A, double *B, double *C, int n, int m, int lines, int p, int q, MPI_Comm comm) {
 	double some, s;
@@ -409,21 +380,6 @@ int jord_inverse(double *A, double *E, int n, double ERROR) {
 
 
 
-
-
-// умножение матрицы на вектор: A * vec = result_vec. (h = высота матрицы (и результата), w = ширина матрицы)
-int multiply_mat_vec(double *A, double *vec, double *result_vec, int h, int w) {
-	double s;
-	for (int i = 0; i < h; i++) {
-		s = 0;
-		for (int j = 0; j < w; j++) {
-			s += A[i * w + j] * vec[j];
-		}
-		result_vec[i] = s;
-	}
-	return 0;
-}
-
 // c = a * b
 int multiply_blocks(double *a, int av, int ah, double *b, int bv, int bh, double *c) {
     int r = 0, t = 0, q, temp_r, temp_t;
@@ -542,19 +498,17 @@ int multiply_blocks(double *a, int av, int ah, double *b, int bv, int bh, double
 
 
 int get_inversed_block(double *buf, int n, int m, int size, int i, int j, double *V1, double *V2, double norma) {
-	get_block(buf, i, j, n, m, V2, m, m);
-	for (int b = 0; b < size * size; b++) {
+	get_block(buf, i, j, n, m, V2, size, size);
+	/* for (int b = 0; b < size * size; b++) {
 		V1[b] = ((b / size) == (b % size)  ?  1 : 0);
-	}
-	return jord_inverse(V2, V1, m, norma);
+	} */
+	for (int po = 0; po < size; po++) for (int ku = 0; ku < size; ku++) V1[po * size + ku] = (po == ku);
+	return jord_inverse(V2, V1, size, norma);
 }
 
-int get_main_block(/* std::pair <double, int> &glavny, */ double *glavny, double *buf, /* int n, */ int m, int size, /* int lines, */ int p, int q, int step, double *V1, double *V2, double norma) {
-	glavny[0] = 1e304;
-	glavny[1] = -1;
-
-	/* glavny.first = 1e304;
-	glavny.second = -1; */
+int get_main_block(std::pair <double, int> &glavny, double *buf, /* int n, */ int m, int size, /* int lines, */ int p, int q, int step, double *V1, double *V2, double norma) {
+	glavny.first = 1e304;
+	glavny.second = -1;
 
 
 	double minimum;
@@ -564,48 +518,50 @@ int get_main_block(/* std::pair <double, int> &glavny, */ double *glavny, double
 		result = get_inversed_block(buf, m, m, m, i, 0, V1, V2, norma);
 
 		if (result == -1) continue;
-		minimum = norma_of_matrix(V1, m, m);
-		if (minimum < glavny[0]) {
-			glavny[0] = minimum;
-			glavny[1] = i;
-		}
 
-		/* if (result == 0) {
+		if (result == 0) {
 			minimum = norma_of_matrix(V1, m, m);
 			if (minimum < glavny.first) {
 				glavny.first = minimum;
 				glavny.second = i;
 			}
-
-			if (minimum < glavny[0]) {
-				glavny[0] = minimum;
-				glavny[1] = i;
-			}
-		} */
+		}
 	}
 	return 0;
 }
 
-void subtract_with_multiply (double *a, int from_ind, int ind, int start_stl, double *mult, int col_cnt, int m, double *buf, double *result) {
+
+
+/* void multiply_matrix_and_vector(double *A, double *B, double *C, int m, int n) {
+    for (int i = 0; i < m; i++) {
+		double s = 0;
+        for (int j = 0; j < n; j++) s += A[i * n + j] * B[j];
+        C[i] = s;
+    }
+} */
+
+// подредачить ////////////////////////////////////////////////////////////////////////
+void subtract_with_multiply(double *A, int from_ind, int ind, int start_stl, double *mult, int col_cnt, int m, double *buf, double *result) {
 	for (int w = start_stl; w < col_cnt; w++) {
-		get_block(a, ind, w, col_cnt * m, m, buf, m, m);
+		get_block(A, ind, w, col_cnt * m, m, buf, m, m);
 		multiply_blocks(mult, m, m, buf, m, m, result);
-		//multiply_blocks_m (mult, buf, res, m);
-		get_block(a, from_ind, w, col_cnt * m, m, buf, m, m);
+		get_block(A, from_ind, w, col_cnt * m, m, buf, m, m);
 		for (int i = 0; i < m * m; i++) buf[i] -= result[i];
-		//subtract_blocks (buf, res, m, m);
-		set_block(a, from_ind, w, col_cnt * m, m, buf, m, m);
+		set_block(A, from_ind, w, col_cnt * m, m, buf, m, m);
 	}
 }
 
-void subtract_with_multiply_vector (double *b, int from_ind, int ind, double *mult, int m, double *buf, double *result) {
-	get_vector(b, buf, ind, m, m);
-	multiply_blocks(mult, m, m, buf, m, m, result);
-	//multiply_matrix_and_vector (mult, buf, res, m, m);
-	get_vector(b, buf, from_ind, m, m);
+void subtract_with_multiply_vector (double *B, int from_ind, int ind, double *mult, int m, double *buf, double *result) {
+	get_vector(B, buf, ind, m, m);
+	//multiply_matrix_and_vector (mult, buf, result, m, m);
+	for (int i = 0; i < m; i++) {
+		double s = 0;
+        for (int j = 0; j < m; j++) s += mult[i * m + j] * buf[j];
+        result[i] = s;
+    }
+	get_vector(B, buf, from_ind, m, m);
 	for (int i = 0; i < m * 1; i++) buf[i] -= result[i];
-	//subtract_blocks (buf, res, m, 1);
-	set_vector(b, buf, from_ind, m, m); 
+	set_vector(B, buf, from_ind, m, m); 
 }
 
 
@@ -629,7 +585,11 @@ int solver(double *A, double *B, double *buf, double norma, int n, int m, int k,
 
 
 
-	for (int i = 0; i < k; i++) {
+
+	/* for (int i = 0; i < n; i++) printf(" %lf ", B[i]);
+	printf("\n"); */
+
+	for (int i = 0; i < size + (l != 0); i++) {
 		owner = i % p;
 
 		// отправляем всем столб, в котором надо искать главный элемент
@@ -643,20 +603,16 @@ int solver(double *A, double *B, double *buf, double norma, int n, int m, int k,
 		// ищем главный элемент в отправленном буфере
 		if (l != 0 && i == size && owner == q) {
 			get_block(A, size, i / p, lines * m, m, V1, l, l);
-			if (norma_of_matrix(V1, l, l) < norma) result = SING_MATRIX;
+			if (norma_of_matrix(V1, l, l) < norma) result = -3;
 			else result = size;
 		}
 		else if (i < size || l == 0) {
-			double *sendbuf = new double[2], *recvbuf = new double[2];
-			//std::pair <double, int> send, get;
+			std::pair <double, int> sendbuf, recvbuf;
 			get_main_block(sendbuf, buf, /* n, */ m, size, /* lines, */ p, q, i, V1, V2, norma);
 			MPI_Allreduce(&sendbuf, &recvbuf, 1, MPI_DOUBLE_INT, MPI_MINLOC, comm);
-			//result = get.second;
-			result = (int)recvbuf[1];
-			printf("res = %d\n", result);
+			result = recvbuf.second;
 		}
 		MPI_Bcast(&result, 1, MPI_INT, owner, comm);
-		printf("---- 3\n");
 
 		// если алгоритм неприменим, то чистим память
 		if (result < 0) {
@@ -670,22 +626,33 @@ int solver(double *A, double *B, double *buf, double norma, int n, int m, int k,
 			delete [] buf_vec_2;
 			return result;
 		}
-		printf("---- 3.5\n");
 
 
 
 
 		if (owner == q) {
 			if (l != 0 && i == size) {
+				//printf("\n so... %d %d %d \n", lines * m, l, size / p);
 				get_inversed_block(A, lines * m, m, l, result, size / p, V1_l, V2_l, norma);
+				/* print_vector(V1_l, l * l);
+				print_vector(V2_l, l * l);
+				printf("\n"); */
 				memset(V1, 0, m * m * sizeof(double));
 				set_block(V1, 0, 0, m, m, V1_l, l, l);
+				//printf("Блок в самом конце\n");			////////////////////////////////////////////////////////////////
+				/* print_vector(V1_l, l * l);
+				print_vector(V2_l, l * l);
+				print_vector(V1, m * m);
+				printf("\n"); */
 			}
 			else get_inversed_block(A, lines * m, m, m, result, i / p, V1, V2, norma);
 		}
-		printf("---- 4\n");
+		
 		// отправим 
 		MPI_Bcast(V1, m * m, MPI_DOUBLE, owner, comm);
+
+		//multiply_block_on_str(result, i / p + (owner == q), A, V1, lines, m, V2, V3);
+	    //multiply_block_on_vector(V1, B, result, m, m, buf_vec_1);
 
 		// умножаем строку и правую часть на обратный к главному элементу
 		// умножаем строку
@@ -698,34 +665,38 @@ int solver(double *A, double *B, double *buf, double norma, int n, int m, int k,
 		for (int y = 0; y < m; y++) buf_vec_1[y] = *(B + result * m + y);
 		for (int y = 0; y < m; y++) {
 			double sum = 0;
-			for (int u = 0; u < m; u++) {
-				sum += V1[y * m + u] * buf_vec_1[u];
-			}
+			for (int u = 0; u < m; u++)	sum += V1[y * m + u] * buf_vec_1[u];
 			B[result * m + y] = sum;
 		}
 
-		printf("---- 5\n");
+		
 
 		// далее вычитаем строки
 		for (int j = 0; j < k; j++) {
 			if (j == result) continue;
 			get_block(buf, j, 0, m, m, V1, m, m);
-			//if (norma_of_matrix(V1, m, m) < norma) continue;
+			if (norma_of_matrix(V1, m, m) < norma) continue;
 			subtract_with_multiply(A, j, result, i / p + (owner == q), V1, lines, m, V2, V3);
 			subtract_with_multiply_vector(B, j, result, V1, m, buf_vec_1, buf_vec_2);
 		}
 		if (result != i) change_block_lines(A, B, i / p + (owner == q), i, result, m, lines, V2, V3, buf_vec_1, buf_vec_2);
+		
+
+
+
+
+
+		/* print_matrix(A, n, m, parametor, k, lines, p, q, V2_l, comm);
+		if (q == 0) {
+			for (int i = 0; i < n; i++) printf(" %lf ", B[i]);
+			printf("\n");
+		}
+		sleep(1); */
 	}
-
-	for (int i = 0; i < n; i++) printf(" %lf ", B[i]);
-	printf("\n");
-
-	//MPI_Barrier(comm);
-	//printf("%lf %lf %lf, %le, %d %d %d %d\n", A[0], B[0], buf[0], norma, n, m, p, q);
-	
-	
-	//delete [] V1; delete [] V2; delete [] V3; if (V1_l != nullptr) delete [] V1_l; if (V2_l != nullptr) delete [] V2_l; delete [] buf_vec_1; delete [] buf_vec_2;
-	printf("00000000000 end \n");
+	delete [] V1; delete [] V2; delete [] V3; if (V1_l != nullptr) delete [] V1_l; if (V2_l != nullptr) delete [] V2_l; delete [] buf_vec_1; delete [] buf_vec_2;
+	// почему-то память плохо очищается
+	/* printf("Все штатно\n");
+	sleep(1); */
 	return 0;
 }
 

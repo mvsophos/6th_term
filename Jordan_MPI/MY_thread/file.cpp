@@ -9,7 +9,7 @@
 
 // храним матрицу по столбам, при это не поблочно, а по-человечески
 // ФОРМАТ ВВОДА ТАКОВ: ./a.out  n  m  p  r  s  <filename>
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     int task_number_of_task = 15;
     /* int errcode = 0; */
     int q = 0, p = 0;               // эти параметры передаются через командную строку при вызове (q = номер процесса, p = общее количество процесса)
@@ -59,12 +59,20 @@ int main(int argc, char* argv[]) {
 
     //k = n / m + (n % m != 0);           // столько блочных строк в матрице (считается вместе с неполной строкой, если она есть)
     k = (n + m - 1) / m;
-    if (p >= k) p = k;
+
+    if (p > k) {        // если слишком много, то можно сделать блок поменьше, чтобы работало (но я должен узнать как сделать)
+        if (q == 0) printf("Слишком много процессов, блоков не хватает\n");
+        MPI_Finalize();
+        return 0;
+    }
+
+    /* if (p >= k) p = k;
+    
     if (q >= p) {
         MPI_Allreduce(&error_in_process, &error_in_program, 1, MPI_INT, MPI_SUM, comm);
         MPI_Finalize();
         return 0;
-    }
+    } */
 
     int lines = k / p + (q < k % p);            // это сколько столбов у каждого процесса (на самом деле хранятся столбы, но размер тот же)
 
@@ -111,6 +119,8 @@ int main(int argc, char* argv[]) {
     memset(X, 0, m * k * sizeof(double));
     memset(buf, 0, m * m * k * sizeof(double));
 
+    //printf("k = %d, m = %d, lines = %d\n", k, m, lines);
+
 
 
     // это заполнение матрицы
@@ -142,21 +152,19 @@ int main(int argc, char* argv[]) {
     mpi_time_1 = MPI_Wtime();
     // какое-то решение
     error_in_process = solver(A, B, buf, norma, n, m, k, lines, p, q, comm);
-
-    /* for (i = 0; i < n; i++) {       // находим решение (это неточное решение)
-        B[i] = (i % 2 == 0);
-    } */
-    //error_in_process = 0; // РАНЬШЕ БЫЛО ВОТ ЭТО
     mpi_time_1 = MPI_Wtime() - mpi_time_1;
 
 
-    
+
+
+
     // как суммировать ошибки в процессах? если хотя бы у одного есть ошибка, то надо всех выбросить
     MPI_Allreduce(&error_in_process, &error_in_program, 1, MPI_INT, MPI_SUM, comm);
     // от этого часто иногда возникают ошибки
 
 
     // обрабатываем решение, оно нормальное или нет
+    //if (0 != 0) {
     if (error_in_program < 0) {
         printf("Алгоритм неприменим. Досвидули\n");
         delete [] A;
@@ -192,7 +200,6 @@ int main(int argc, char* argv[]) {
         buf[i] = ((i % 2) == 0);
     }
     residuals(&r1, &r2, A, B, X, buf, n, m, lines, p, q, comm);
-
     mpi_time_2 = MPI_Wtime() - mpi_time_2;
 
     if (q == 0) {                     // уточнить требуемый формат вывода
@@ -200,7 +207,7 @@ int main(int argc, char* argv[]) {
         printf("%s : Task = %d Res1 = %e Res2 = %e T1 = %.2f T2 = %.2f S = %d N = %d M = %d P = %d\n", argv[0], task_number_of_task, r1, r2, mpi_time_1, mpi_time_2, s, n, m, p);
     }
 
-    printf("ALL FINISH \n");
+    
 
     delete [] A;
     delete [] B;
