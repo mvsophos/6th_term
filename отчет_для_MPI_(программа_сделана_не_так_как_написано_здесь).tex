@@ -1,0 +1,203 @@
+\documentclass[12pt]{article} %draft - чтобы видеть где есть выход за пределы страницы
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc} % нужно только для того чтобы он не выдавал какое-то длинное предупреждение
+\usepackage[english,russian]{babel}
+\usepackage{graphicx} %этот пакет для вставки графики в документ
+\usepackage{amsmath}
+\usepackage{enumerate}
+\usepackage{amssymb}
+\usepackage{mathrsfs}
+\usepackage{comment}
+\usepackage{listings}
+\usepackage{xcolor}
+\frenchspacing
+
+
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{backcolour}{rgb}{1,1,1}
+\definecolor{TRE} {rgb}{0.9,0.3,0.5}
+
+\IfFileExists{pscyr.sty}
+{
+  \usepackage{pscyr}
+  \def\rmdefault{ftm}
+  \def\sfdefault{ftx}
+  \def\ttdefault{fer}
+  \DeclareMathAlphabet{\mathbf}{OT1}{ftm}{bx}{it} % bx/it or bx/m
+}
+
+\mathsurround=0.1em
+\clubpenalty=1000%
+\widowpenalty=1000%
+\brokenpenalty=2000%
+\frenchspacing%
+\tolerance=2500%
+\hbadness=1500%
+\vbadness=1500%
+\doublehyphendemerits=50000%
+\finalhyphendemerits=25000%
+\adjdemerits=50000%
+
+
+
+\setlength{\parindent}{0cm} % не люблю отступы в абзацах
+
+\author{Мещеряков Вадим}
+\title{Метод Жордана решения линейной системы с выбором главного элемента по столбцу.\\ MPI реализация.}
+\date{\today}
+
+\begin{document}
+
+\mathsurround = 0pt %для окружения математических формул
+\setlength{\parindent}{0cm} %удалил отступы в абзацах
+\relpenalty = 10000
+\binoppenalty = 10000
+
+\maketitle
+\section{Постановка задачи}
+
+Решаем линейную систему с матрицей $A$ вида $Ax = b$
+$$
+    \begin{pmatrix}
+     a_{11}& a_{12} &\ldots & a_{1n}\\
+     a_{21}& a_{22} &\ldots & a_{2n}\\
+     \vdots& \vdots &\ddots & \vdots\\
+     a_{n1}& a_{n2} &\ldots & a_{nn}
+    \end{pmatrix}
+    \begin{pmatrix}
+     x_1 \\
+     x_2 \\
+     \vdots \\
+     x_n
+    \end{pmatrix}
+    =
+    \begin{pmatrix}
+     b_1 \\
+     b_2 \\
+     \vdots \\
+     b_n
+    \end{pmatrix}
+$$
+
+Разделим матрицу $A$ на блоки $m \times m$ и представим в виде:
+$$\hat A=
+  \left( \begin{array}{c c c c c|c}
+    A_{11}^{m \times m} & A_{12}^{m \times m} & \cdots & A_{1,k}^{m \times m} & A_{1,k+1}^{m \times l} & B_1^{m \times 1} \\
+    A_{21}^{m \times m} & A_{22}^{m \times m} & \cdots & A_{2,k}^{m \times m} & A_{2,k+1}^{m \times l} & B_2^{m \times 1} \\ 
+    \vdots & \vdots & \ddots & \vdots & \vdots & \vdots \\ 
+    A_{k,1}^{m \times m} & A_{k,2}^{m \times m} & \cdots & A_{k,k}^{m \times m} & A_{k,k+1}^{m \times l} & B_k^{m \times 1} \\
+    A_{k+1,1}^{l \times m} & A_{k+1,2}^{l \times m} & \cdots & A_{k+1,k}^{l \times m} & A_{k+1,k+1}^{l \times l} & B_{k+1}^{l \times 1}
+  \end{array}
+  \right)
+$$
+Матрицу $A$ храним в памяти в виде линейного массива следующим образом:
+$$A = \{a_{11},a_{12},\ldots,a_{1m},a_{21},a_{22}\ldots,a_{2m},\ldots \; \ldots,a_{nn}\}$$
+
+\section{Разделение данных между процессами}
+Процессы имеют доступ только к своим данным. Строки блоков с номерами $i,\; i+p,\; i+2p,\ldots\;, 1 \leqslant i \leqslant p$ принадлежат процессу с номером $i$. Правая часть разбивается аналогично.
+
+\subsection{Локальная и глобальная нумерация}
+Для начала опишем функции, позволяющие работать с глобальной и локальной нумерациями блоков.
+
+\begin{lstlisting}
+int l2g(int m, int p, int k, int i_loc) {
+    int i_loc_m = i_loc / m;
+    int i_glob_m = i_loc_m * p + k;
+    return i_glob_m * m + i_loc % m;
+}
+
+int g2l(int m, int p, int i_glob) {
+    int i_glob_m = i_glob / m;
+    int i_loc_m = i_glob_m / p;
+    return i_loc_m * m + i_glob % m;
+}
+
+int get_max_rows(int n, int m, int p) {
+    int b = (n + m - 1) / m;
+    return (b + p - 1) / p;
+}
+
+int get_rows(int n, int m, int p, int k) {
+    int b = (n + m - 1) / m;
+    return b % p <= k ? b/p : b/p + 1
+}
+
+int get_k(int n, int m, int p, int i_glob) {
+    int i_glob_m = i_glob / m;
+    return i_glob_m % p;
+}
+
+\end{lstlisting}
+
+\section{Алгоритм процесса и точки коммуникации}
+Каждый процесс имеет в своей памяти фрагмент всей матрицы, описание этого фрагмента было приведено выше. Опишем действия алгоритма используя локальную нумерацию блоков.
+
+$$\lVert A \rVert _1 = \underset{d} \max \sum \limits_{i} |a_{id}|$$
+
+Опишем действия алгоритма на шаге $1 \leqslant t \leqslant k\quad$ (если блоки поделились неровно, то $k+1$). В наших обозначениях алгоритм выбирает главный элемент в блочном столбце с номером $t$:
+\begin{enumerate}
+    \item
+    Каждый процесс ищет блок в своем столбце $t$ с наименьшей нормой обратной матрицы. Необходимо искать главный элемент среди блоков, номер строки которых в глобальной нумерации больше либо равен $t$. Обозначим этот блок как G.
+    \item
+    \textbf{Точка коммуникации}. С помощью функции \texttt{MPI\_Allreduce} находим блок с наименьшей нормой обратного в строке $s$. В случае, если не был найден главный элемент, мы делаем вывод, что алгоритм к данной матрице неприменим.
+    \item
+    \textbf{Точка коммуникации}. Процессы $P$ и $Q$, владеющий строкой $t$, меняют местами найденную строку $s$ с главным элементом (которой владеет процесс с номером $P$) и строку номер $t$. Для этого с помощью функции \texttt{MPI\_Sendrecv} они отравляют даннные в буфер своих процессов (или напрямую в память, на место строки, которая заменяется). Объем отправляемых и принимаемых данных равен $m \cdot (n - m \cdot t)$.
+    % \item {\bf Точка коммуникации}. Далее, процесс номер $Q$ отправляет главный элемент $G$ (который в глобальной нумерации находится в $t$-й строке $t$-м столбце. Для этого процесс $Q$ вызывает функцию \texttt{MPI\_Bcast}. Объем отправленных данных равен $m \cdot m$.
+    % \item Все процессы умножают свои строки и элемент правой части на отправленный главный элемент $G$.
+    \item
+    Строка номер $i$ умножается на обратный к главному элемент.
+    \item
+    \textbf{Точка коммуникации}. Процесс $Q$ отправляет свою строку номер $t$ всем другим процессам в их буфер, с помощью функции \texttt{MPI\_Bcast}. Отправляются блоки в столбцах $t+1, t+2, \ldots$. Объем отправленных данных равен $m \cdot (n - t \cdot m)$.
+    \item
+    Все процессы вычитают полученную строку из своих строк.
+
+    Стоит отдельно прописать последний шаг, в случае, когда блоки поделились неровно.
+\end{enumerate}
+
+\section{Формулы в одном процессе}
+Предположим, что $n$ кратно $p$. Описывается шаг номер $i$.
+\begin{enumerate}
+    \item Поиск главного элемента всеми процессами.
+    \item Нахождение главного элемента в некоторой строке.
+    \item Меняются строки с главным элементом и строка номер $i$ (то есть теперь в строке номер $i$ находится главный элемент).
+    \item Умножение главной строки на обратный к главному элемент.
+    $$ A_{i,i} = E, \quad A_{i,j} = (A_{i,i})^{-1} \; A_{i,j} \quad \forall j = i+1, \ldots, \lceil \frac{n}{m} \rceil, \quad B_i = (A_{i,i})^{-1} \; B_i$$
+    \item Отправка строки номер i всем остальным процессам.
+    \item Вычитаем строки:
+    $$ A_{j,w} = A_{j,w} - A_{j,i} \; A_{bufer, \; w}, \quad \forall w = j+1, \ldots, \lceil \frac{n}{m} \rceil $$
+    
+\end{enumerate}
+
+\section{Сложность алгоритма}
+\subsection{Сложность алгоритма}
+\begin{multline} \nonumber
+    \sum_{s = 1}^{k} \left( 2\frac{k-s}{p}m^3 + 2\frac{(k-s)k}{p}m^3 + \frac{k(k-s)}{p}m^2 + O(mn) \right) = 
+    \frac{k(k-1)}{p}m^3 + \\ + \frac{(k-1)k^2}{p}m^3 + \frac{k^2(k-1)}{2p}m^2 + O(n^2) = \frac{nm^2}p + \frac{n^3}{p} + \frac{n^2(k-1)}{2p} + O(n^2) = \\ = \frac{n^3}{p} + \frac{nm^2}{p} + O(n^2).
+\end{multline}
+
+\subsection{Общее количество обменов}
+На каждом шаге есть две точки коммуникации (коммуникации на шагах 2, 3 следуют подряд, поэтому можно считать, что это одна точка коммуникации).
+
+На шаге $i$ имеем 1 обмен строками длины $n - m \cdot i$ (высота этой строки равна $m$) между двумя процессами, далее происходит 1 обмен строкой длины $m \cdot (n - i \cdot m)$.
+
+Таким образом при блочной матрице размера $n \times n$ общее количество обменов равно $3 \cdot \lfloor \frac{n}{m} \rfloor = 3k$ (в случае, если матрица поделилась на блоки неровно).
+
+\subsection{Общий объем обменов}
+На каждом шаге $i$ объем обменов равен:
+\begin{multline} \nonumber
+\sum\limits_{i = 1}^{k}(n - m \cdot i) \cdot m + m \cdot (n - i \cdot m) = \\
+= 2nmk - \sum\limits_{i = 1}^{k} 2m^2i = 2n^2-m^2\sum\limits_{i = 1}^{k} 2\cdot i = \\ = 2n^2 - m^2 \cdot (k + 1)k = n^2 - nm.
+\end{multline}
+
+В итоге общий объем обменов равен $(n^2-nm)\cdot \texttt{sizeof(double)}$.
+
+\subsection{Проверка сложности алгоритма}
+Количество процессов равно $p$.
+$$S(n,m,1) = n^3 + nm^2 + O(n^2)$$
+% $$S(n,m,p) = \frac{1}{p}n^3 + \frac{1}{p}nm^2 + O(n^2)$$
+$$S(n,1,1) = n^3 + O(n^2)$$
+$$S(n,n,1) = 2n^3 + O(n^2)$$
+% $$S(n,1,p) = \frac{1}{p}n^3 + O(n^2)$$
+$$S(n,n,p) = \frac{2}{p}n^3 + O(n^2)$$
+
+\end{document}

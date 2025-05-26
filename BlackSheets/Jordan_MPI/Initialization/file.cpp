@@ -1,0 +1,217 @@
+//#include <sys/sysinfo.h>
+//#include <sched.h>
+#include "func.hpp"
+#include <ctime>
+
+#define eps 1e-15
+
+// -Wunused -Werror - необходим этот флаг в файле компиляции
+
+// храним матрицу по столбам, при это не поблочно, а по-человечески
+// ФОРМАТ ВВОДА ТАКОВ: ./a.out  n  m  p  r  s  <filename>
+int main(int argc, char* argv[]) {
+    int task_number_of_task = 15;
+    /* int errcode = 0; */
+    int q = 0, p = 0;               // эти параметры передаются через командную строку при вызове (q = номер процесса, p = общее количество процесса)
+    int n, m, r, s;
+    int k;                          // это размер матрицы в блоках
+    int i;
+
+    int error_in_process = 0;
+    int error_in_program = 0;
+    int read_result = 0;
+
+    char *filename = nullptr;
+
+
+    double norma = eps;
+    double mpi_time_1 = 0, mpi_time_2 = 0;
+    double r1 = -1, r2 = -1;
+
+
+
+
+
+    MPI_Comm comm = MPI_COMM_WORLD;
+    MPI_Init(&argc, &argv);
+
+    MPI_Comm_size(comm, &p);
+    MPI_Comm_rank(comm, &q);
+
+    // Solving AX = B
+
+    if (!((argc == 5 || argc == 6) 
+    && (sscanf(argv[1], "%d", &n) == 1 
+    && sscanf(argv[2], "%d", &m) == 1 
+    && sscanf(argv[3], "%d", &r) == 1 
+    && sscanf(argv[4], "%d", &s) == 1))) {
+        printf("Usage: %s  n  m  r  s \n", argv[0]);
+        MPI_Finalize();
+        return 0;
+    }
+
+    if (m > n) m = n;
+    if (r > n) r = n;
+
+    if (argc == 6) {
+        filename = argv[5];
+    }
+
+    //k = n / m + (n % m != 0);           // столько блочных строк в матрице (считается вместе с неполной строкой, если она есть)
+    k = (n + m - 1) / m;
+    if (p >= k) p = k;
+    if (q >= p) {
+        MPI_Allreduce(&error_in_process, &error_in_program, 1, MPI_INT, MPI_SUM, comm);
+        MPI_Finalize();
+        return 0;
+    }
+
+    int lines = k / p + (q < k % p);            // это сколько столбов у каждого процесса (на самом деле хранятся столбы, но размер тот же)
+
+    double *A = nullptr;
+    A = new double[m * m * k * lines];  // размер массива в памяти процесса
+    if (A == nullptr) {
+        printf("Ошибка выделения памяти для матрицы\n");
+        delete [] A;
+        MPI_Finalize();
+        return 0;
+    }
+
+    double *B = nullptr, *X = nullptr;
+    B = new double[m * k];          // более чем достаточно памяти
+    X = new double[m * k];
+    if (B == nullptr) {
+        printf("Ошибка выделения памяти вектора\n");
+        delete [] A;
+        MPI_Finalize();
+        return 0;
+    }
+    if (X == nullptr) {
+        printf("Ошибка выделения памяти вектора\n");
+        delete [] A;
+        delete [] B;
+        MPI_Finalize();
+        return 0;
+    }
+
+    double *buf = nullptr;
+    buf = new double[m * m * k];
+    if (buf == nullptr) {
+        printf("Ошибка выделения памяти буфера\n");
+        delete [] X;
+        delete [] A;
+        delete [] B;
+        MPI_Finalize();
+        return 0;
+    }
+    // выделили память и обработали ее ошибки
+
+    memset(A, 0, m * m * k * lines * sizeof(double));           // прикрепляем память к своему процессу
+    memset(B, 0, m * k * sizeof(double));
+    memset(X, 0, m * k * sizeof(double));
+    memset(buf, 0, m * m * k * sizeof(double));
+
+
+
+    // это заполнение матрицы
+    if (s == 0) {
+        read_result = read_matrix(A, n, m, lines, p, q, buf, filename, comm);
+        if (read_result != 0) {
+            if      (read_result == -1)  printf("Ошибка открытия файла\n");
+            else if (read_result == -2)  printf("Ошибка чтения файла\n");
+            else                         printf("Неизвестная ошибка\n");
+            delete [] A;
+            delete [] B;
+            delete [] X;
+            delete [] buf;
+            MPI_Finalize();
+            return 0;
+        }
+    }
+    else init_matrix(A, n, m, k, lines, p, q, s);
+
+    init_vector(B, A, n, m, k, lines, p, q, comm);
+    memcpy(X, B, n * sizeof(double));
+
+    print_matrix(A, n, m, r, k, lines, p, q, buf, comm);
+
+    norma *= norm_of_matrix(A, n, m, lines, p, q, comm);
+
+
+
+    mpi_time_1 = MPI_Wtime();
+    // какое-то решение
+    solver(A, B, buf, norma, n, m, k, lines, p, q, comm);
+
+    /* for (i = 0; i < n; i++) {       // находим решение (это неточное решение)
+        B[i] = (i % 2 == 0);
+    } */
+    error_in_process = 0;
+    mpi_time_1 = MPI_Wtime() - mpi_time_1;
+
+
+    
+    // как суммировать ошибки в процессах? если хотя бы у одного есть ошибка, то надо всех выбросить
+    MPI_Allreduce(&error_in_process, &error_in_program, 1, MPI_INT, MPI_SUM, comm);
+    // от этого часто иногда возникают ошибки
+
+
+    // обрабатываем решение, оно нормальное или нет
+    if (error_in_program != 0) {
+        printf("Алгоритм неприменим. Досвидули\n");
+        delete [] A;
+        delete [] B;
+        delete [] X;
+        delete [] buf;
+        MPI_Finalize();
+        return 0;
+    }
+
+    // это второе заполнение матрицы, для подсчета невязок
+    if (s == 0) {
+        read_result = read_matrix(A, n, m, lines, p, q, buf, filename, comm);
+        if (read_result != 0) {
+            if (read_result == -2)          printf("Ошибка открытия файла\n");
+            else if (read_result == -1)     printf("Ошибка чтения файла\n");
+            else                            printf("Неизвестная ошибка\n");
+            delete [] A;
+            delete [] B;
+            delete [] X;
+            delete [] buf;
+            MPI_Finalize();
+            return 0;
+        }
+    }
+    else init_matrix(A, n, m, k, lines, p, q, s);
+
+    //printf_matrix_of_process(A, 0, q, 0, 5);
+
+    mpi_time_2 = MPI_Wtime();
+    // подсчет невязок
+    for (i = 0; i < n; i++) {       // в буфер пишем точное решение
+        buf[i] = ((i % 2) == 0);
+    }
+    residuals(&r1, &r2, A, B, X, buf, n, m, lines, p, q, comm);
+
+    mpi_time_2 = MPI_Wtime() - mpi_time_2;
+
+    if (q == 0) {                     // уточнить требуемый формат вывода
+        print_vector(B, r);
+        printf("%s : Task = %d Res1 = %e Res2 = %e T1 = %.2f T2 = %.2f S = %d N = %d M = %d P = %d\n", argv[0], task_number_of_task, r1, r2, mpi_time_1, mpi_time_2, s, n, m, p);
+    }
+
+    delete [] A;
+    delete [] B;
+    delete [] X;
+    delete [] buf;
+    MPI_Finalize();
+    return 0;
+}
+
+
+
+
+/* 
+all:
+	mpicxx -isystem /usr/lib/x86_64-linux-gnu/mpich/include -O3 -mfpmath=sse -fstack-protector-all -g -W -Wall -Wextra -Werror -Wcast-align -pedantic -pedantic-errors -Wfloat-equal -Wpointer-arith -Wformat-security -Wmissing-format-attribute -Wformat=1 -Wwrite-strings -Wcast-align -Wno-long-long -Woverloaded-virtual -Wnon-virtual-dtor -Wcast-qual -Wno-suggest-attribute=format file.cpp func.hpp
+	 */
