@@ -16,7 +16,7 @@
 
 void *thread_func(void *arg);
 
-class Gui_data {
+class Dataset {
 public:
 	double *A = nullptr;
 	int    *I = nullptr;
@@ -37,6 +37,10 @@ public:
 	int maxit;
 	int p;
 	double (*f)(double, double) = nullptr;
+	
+	// это для увеличения погрешности в центре
+	int parameter;
+	double norma;
 
 	void realloc_data();
 	double find_min_max(double &abs_min, double &abs_max);
@@ -44,7 +48,7 @@ public:
 	void pfind_min_max(double &, double &);
 	void residual_min_max(double &, double &);
 
-	~Gui_data() {
+	~Dataset() {
 		if (A) delete [] A;
 		if (I) delete [] I;
 		if (R) delete [] R;
@@ -56,16 +60,19 @@ public:
 		if (v) delete [] v;
 		if (r) delete [] r;
 	}
-	//~Gui_data();
+	//~Dataset();
 };
 
 class Args {
 public:
-	void copy_data(const Gui_data &data);
+	void copy_data(const Dataset &data);
 	
 	int nx = 0, ny = 0, N = 0, len_msr = 0, func_id = 0;
 	double a = 0, b = 0, c = 0, d = 0, hx = 0, hy = 0;
 	int p = 0, k = 0;
+
+	int parameter = 0;
+	double norma = 0;
 
 	double  *A = nullptr;
 	int     *I = nullptr;

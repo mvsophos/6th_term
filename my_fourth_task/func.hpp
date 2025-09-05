@@ -11,7 +11,8 @@
 #include <sys/resource.h>
 #include <fenv.h>
 
-// Объявления функций
+
+
 double function_0(double, double);
 double function_1(double x, double);
 double function_2(double, double y);
@@ -20,89 +21,7 @@ double function_4(double x, double y);
 double function_5(double x, double y);
 double function_6(double x, double y);
 double function_7(double x, double y);
-/* 
-class Gui_data {
-public:
-	double *A = nullptr;
-	int    *I = nullptr;
-	double *D = nullptr;
-	double *R = nullptr;
-	double *B = nullptr;
-	double *x = nullptr;
-	double *bufer = nullptr;
-	double *u = nullptr;
-	double *v = nullptr;
-	double *r = nullptr;
 
-	double a, b, c, d;
-	double eps;
-	int nx, ny, mx, my;
-	int m;
-	int maxit;
-	int p;
-	double (*f)(double, double) = nullptr;
-
-	void realloc_data();
-	double find_min_max(double &abs_min, double &abs_max);
-	double pf(double, double);
-	void pfind_min_max(double &, double &);
-	void residual_min_max(double &, double &);
-
-	~Gui_data() {
-		if (A) delete [] A;
-		if (I) delete [] I;
-		if (R) delete [] R;
-		if (D) delete [] D;
-		if (B) delete [] B;
-		if (x) delete [] x;
-		if (bufer) delete [] bufer;
-		if (u) delete [] u;
-		if (v) delete [] v;
-		if (r) delete [] r;
-	}
-	//~Gui_data();
-};
-
-class Args {
-public:
-	void copy_data(const Gui_data &data);
-	
-	int nx = 0, ny = 0, N = 0, len_msr = 0, func_id = 0;
-	double a = 0, b = 0, c = 0, d = 0, hx = 0, hy = 0;
-	int p = 0, k = 0;
-
-	double  *A = nullptr;
-	int     *I = nullptr;
-	double  *D = nullptr;
-	double  *R = nullptr;
-	double  *B = nullptr;
-	double  *x = nullptr;
-	double  *bufer = nullptr;
-	double  *r = nullptr;
-	double  *u = nullptr;
-	double  *v = nullptr;
-
-	double (*f)(double, double) = nullptr;
-
-	int its = 0, maxit = 0;
-	double eps = 0;
-	double t1 = 0, t2 = 0, r1 = -1, r2 = -1, r3 = -1, r4 = -1;
-
-	bool close_window = false;
-	bool ready = true;
-
-	pthread_t tid = 0;
-	pthread_cond_t *cond = nullptr;
-	pthread_mutex_t *mutex = nullptr;
-	double cpu_time = 0;
-	double cpu_time_of_all_threads = 0;
-	double astr_time = 0.0;
-	double res = 0;
-
-	double (*set_function(int ooo))(double, double);
-};
- */
-// Объявления функций
 void print_array(double *array, int n);
 void reduce_sum(int p, double *a = nullptr, int n = 0);
 void reduce_sum_int(int p, int *a = nullptr, int n = 0);
@@ -118,11 +37,11 @@ void l2ij(int nx, int ny, int &i, int &j, int l);
 int get_len_msr(int nx, int ny);
 int IA_ij(int nx, int ny, double hx, double hy, int i, int j, int is, int js, int s, int *I = nullptr, double *A = nullptr);
 int get_off_diag(int nx, int ny, double hx, double hy, int i, int j, int *I, double *A);
-double F_IJ(int nx, int ny, double hx, double hy, double a, double c, int i, int j, double (*f)(double, double));
+double F_IJ(int nx, int ny, double hx, double hy, double a, double c, int i, int j, double (*f)(double, double), int parameter, double norma);
 int get_len_msr_off_diag(int nx, int ny, double *A, int *I);
 void fill_I(int nx, int ny, int *I);
 int fill_IA(int nx, int ny, double hx, double hy, int *I, double *A, int p, int k);
-void fill_B(int N, int nx, int ny, double hx, double hy, double *b, double a, double c, int p, int k, double (*f)(double, double));
+void fill_B(int N, int nx, int ny, double hx, double hy, double *b, double a, double c, int p, int k, double (*f)(double, double), int parameter, double norma);
 double sign(double x);
 double Pf(double *res, double x, double y, double a, double c, double hx, double hy, int nx, int ny);
 double r1_nev(double (*f)(double, double), double *x, double a, double c, double hx, double hy, int nx, int ny, int p, int k);

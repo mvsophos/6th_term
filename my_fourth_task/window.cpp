@@ -1,5 +1,4 @@
 #include "window.hpp"
-//#include "thread_func.hpp"
 #include "func.hpp"
 #include "thread.hpp"
 
@@ -8,14 +7,14 @@
 
 
 bool Window::msr_ready() {
-	for(int i = 0; i < data.p; i++) {
-		if(args[i].ready == false) return false;
+	for (int i = 0; i < data.p; i++) {
+		if (args[i].ready == false) return false;
 	}
 	return true;
 }
 
 void Window::msr_wait() {
-	if(msr_ready()) {
+	if (msr_ready()) {
 		printf("%s : Task = 8 R1 = %e R2 = %e R3 = %e R4 = %e T1 = %.2f T2 = %.2f\n It = %d E = %le K = %d Nx = %d Ny = %d P = %d\n", 
 			program_name, args[0].r1, args[0].r2, args[0].r3, args[0].r4, args[0].t1, args[0].t2, args[0].its, data.eps, func_id, data.nx, data.ny, data.p);
 		update();
@@ -28,15 +27,6 @@ void Window::msr_wait() {
 void Window::draw_txt(QPainter *painter) {
 	char stroka[100];
 	painter->drawText(10, 20, f_name);
-	/* std::string txt1 = "a = " + std::to_string(data.a);
-	std::string txt2 = "b = " + std::to_string(data.b);
-	std::string txt3 = "c = " + std::to_string(data.c);
-	std::string txt4 = "d = " + std::to_string(data.d);
-	std::string txt5 = "nx = " + std::to_string(data.nx);
-	std::string txt6 = "ny = " + std::to_string(data.ny);
-	std::string txt7 = "mx = " + std::to_string(data.mx);
-	std::string txt8 = "my = " + std::to_string(data.my);
-	std::string txt9 = "p = " + std::to_string(p_count); */
 	sprintf(stroka, "a  = %.2e", data.a);
 	painter->drawText(10, 60, stroka);
 	sprintf(stroka, "b  = %.2e", data.b);
@@ -53,7 +43,7 @@ void Window::draw_txt(QPainter *painter) {
 	painter->drawText(10, 180, stroka);
 	sprintf(stroka, "my = %d", data.my);
 	painter->drawText(10, 200, stroka);
-	sprintf(stroka, "p  = %d", data.p);
+	sprintf(stroka, "p  = %d", data.parameter);
 	painter->drawText(10, 220, stroka);
 }
 
@@ -86,7 +76,7 @@ int Window::parse_command_line(int argc, char *argv[]) {
 		args[k].cond = &cond;
 	}
 
-	next_func();
+	change_func();
 	return 0;
 }
 
@@ -109,7 +99,7 @@ QSize Window::sizeHint() const {
 
 
 
-void Window::select_f() {
+void Window::set_f() {
     double (*f)(double, double) = data.f;
     switch(func_id) {
     case 0:
@@ -149,52 +139,28 @@ void Window::select_f() {
 }
 
 // методы для рисования всего подряд
-
-/* void Window::triangle(QPainter *painter, Point p1, Point p2, Point p3, QColor color){
-	QPainterPath path;
-	double min_y = data.c, max_y = data.d;
-
-	path.moveTo(L2G(p1.x, p1.y));
-	path.lineTo(L2G(p2.x, p2.y));
-	path.lineTo(L2G(p3.x, p3.y));
-	path.lineTo(L2G(p1.x, p1.y));
-
-	painter->setPen(Qt::NoPen);
-	painter->fillPath(path, QBrush(color));
-} */
 // в этих штуках меняются цвета
-double normalize(double value, double abs_min, double abs_max){
+double search_k(double value, double abs_min, double abs_max) {
 	if (value - abs_min < 0) return 0;
 	if (abs_max - value < 0) return 1;
-	if (/* std:: */fabs(abs_max - abs_min) < EPS) return 1;       // это для функции единица
-	return /* std:: */fabs((value - abs_min) / (abs_max - abs_min));
+	if (fabs(abs_max - abs_min) < EPS) return 1;       // это для функции единица
+	return fabs((value - abs_min) / (abs_max - abs_min));
 }
 
-void rgb_for_f(int &R, int &G, int &B, double k){
-	/* R = k * 128;
-	G = k * 0;
-	B = k * 128; */
-	R = 127 + 128 * k;
-	G = 255 * k;
-	B = 0;
+void rgb_for_f(int &R, int &G, int &B, double k) {
+	R = 127 + 127 * k;
+	G = 127 - 127 * k;
+	B = 127 - 127 * k;
 }
-
-void rgb_for_pf(int &R, int &G, int &B, double k){
-	/* R = k * 0;
-	G = k * 255;
-	B = k * 255; */
-	R = 255 * k;
-	G = 127 + 128 * k;
-	B = 0;
+void rgb_for_pf(int &R, int &G, int &B, double k) {
+	R = 127 - 127 * k;
+	G = 127 + 127 * k;
+	B = 127 - 127 * k;
 }
-
-void rgb_for_residual(int &R, int &G, int &B, double k){
-	/* R = k * 255;
-	G = k * 255;
-	B = k * 0; */
-	R = 127;
-	G = 127;
-	B = 127 + 128 * k;
+void rgb_for_residual(int &R, int &G, int &B, double k) {
+	R = 127 - 127 * k;
+	G = 127 - 127 * k;
+	B = 127 + 127 * k;
 }
 
 
@@ -205,7 +171,7 @@ QPointF Window::l2g(double x_loc, double y_loc, double y_min, double y_max) {
 	return QPointF(x_gl, y_gl);
 }
 
-void Window::triangle(QPainter *painter, double x1, double y1, double x2, double y2, double x3, double y3, QColor color){
+void Window::draw_one_element(QPainter *painter, double x1, double y1, double x2, double y2, double x3, double y3, QColor color) {
 	QPainterPath path;
 	//double min_y = data.c, max_y = data.d;
 
@@ -218,46 +184,42 @@ void Window::triangle(QPainter *painter, double x1, double y1, double x2, double
 	painter->fillPath(path, QBrush(color));
 }
 
-void Window::draw_f(QPainter *painter){
+void Window::draw_f(QPainter *painter) {
 	double a = data.a, b = data.b, c = data.c, d = data.d;
 	double mx = data.mx, my = data.my;
 	double (*f)(double, double) = data.f;
 
 	double hx = (b - a) / mx;
 	double hy = (d - c) / my;
-	double value, k_rgb;
+	double val_f, k_color;
 	int R, G, B, i, j;
-	//Point p1, p2, p3;
+	
 	double x1, y1, x2, y2, x3, y3;
 	double abs_min = f(a + hx / 3.0, c + (2.0 / 3.0) * hy);
 	double abs_max = abs_min;
 
 	data.find_min_max(abs_min, abs_max);
-	for (i = 0; i < mx; ++i){
-		for (j = 0; j < my; ++j){
-			/* p1 = {a + i*hx, c + j*hy};
-			p2 = {p1.x, c + (j + 1)*hy};
-			p3 = {a + (i + 1)*hx, p2.y}; */
+	for (i = 0; i < mx; ++i) {
+		for (j = 0; j < my; ++j) {
 			x1 = a + i * hx;        y1 = c + j * hy;
 			x2 = x1;                y2 = c + (j + 1) * hy;
 			x3 = a + (i + 1) * hx;  y3 = y2;
 
-			value = f(a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy);
-			k_rgb = normalize(value, abs_min, abs_max);
-			rgb_for_f(R, G, B, k_rgb);
-			triangle(painter, x1, y1, x2, y2, x3, y3, QColor(R, G, B));
+			val_f = f(a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy);
+			k_color = search_k(val_f, abs_min, abs_max);
+			rgb_for_f(R, G, B, k_color);
+			draw_one_element(painter, x1, y1, x2, y2, x3, y3, QColor(R, G, B));
 
-			//p2 = {a + (i + 1)*hx, c + j*hy};
 			x2 = a + (i + 1) * hx;  y2 = c + j * hy;
-			value = f(a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy);
-			k_rgb = normalize(value, abs_min, abs_max);
-			rgb_for_f(R, G, B, k_rgb);
-			triangle(painter, x1, y1, x2, y2, x3, y3, QColor(R, G, B));
+			val_f = f(a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy);
+			k_color = search_k(val_f, abs_min, abs_max);
+			rgb_for_f(R, G, B, k_color);
+			draw_one_element(painter, x1, y1, x2, y2, x3, y3, QColor(R, G, B));
 		}
 	}
 
 	char max_str[100];
-	double f_max = std::max(std::fabs(abs_min), std::fabs(abs_max));
+	double f_max = fmax(fabs(abs_min), fabs(abs_max));
 	sprintf(max_str, "max_abs(f) = %.2e", f_max);
 	painter->setPen("black");
 	painter->drawText(10, 40, max_str);
@@ -270,96 +232,82 @@ void Window::draw_Pf(QPainter *painter) {
 
 	double hx = (b - a) / mx;
 	double hy = (d - c) / my;
-	double value, k_rgb;
+	double val_Pf, k_color;
 	int R, G, B, i, j;
-	//Point p1, p2, p3;
+	
 	double x1, y1, x2, y2, x3, y3;
-	//double abs_min = data.pf({a + hx / 3.0, c + (2.0 / 3.0) * hy});
 	double abs_min = data.pf(a + hx / 3.0, c + (2.0 / 3.0) * hy);
 	double abs_max = abs_min;
 
 	data.pfind_min_max(abs_min, abs_max);
 	for (i = 0; i < mx; ++i) {
 		for (j = 0; j < my; ++j) {
-			/* p1 = {a + i*hx, c + j*hy};
-			p2 = {p1.x, c + (j + 1)*hy};
-			p3 = {a + (i + 1)*hx, p2.y}; */
 			x1 = a + i * hx;        y1 = c + j * hy;
 			x2 = x1;                y2 = c + (j + 1) * hy;
 			x3 = a + (i + 1) * hx;  y3 = y2;
 
-			//value = data.pf({a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy});
-			value = data.pf(a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy);
-			k_rgb = normalize(value, abs_min, abs_max);
-			rgb_for_pf(R, G, B, k_rgb);
-			triangle(painter, x1, y1, x2, y2, x3, y3, QColor(R, G, B));
+			val_Pf = data.pf(a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy);
+			k_color = search_k(val_Pf, abs_min, abs_max);
+			rgb_for_pf(R, G, B, k_color);
+			draw_one_element(painter, x1, y1, x2, y2, x3, y3, QColor(R, G, B));
 
-			//p2 = {a + (i + 1)*hx, c + j*hy};
 			x2 = a + (i + 1) * hx;  y2 = c + j * hy;
-			//value = data.pf({a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy});
-			value = data.pf(a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy);
-			k_rgb = normalize(value, abs_min, abs_max);
-			rgb_for_pf(R, G, B, k_rgb);
-			triangle(painter, x1, y1, x2, y2, x3, y3, QColor(R, G, B));
+			val_Pf = data.pf(a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy);
+			k_color = search_k(val_Pf, abs_min, abs_max);
+			rgb_for_pf(R, G, B, k_color);
+			draw_one_element(painter, x1, y1, x2, y2, x3, y3, QColor(R, G, B));
 		}
 	}
 
 	char max_str[100];
-	double pf_max = std::max(std::fabs(abs_min), std::fabs(abs_max));
+	double pf_max = fmax(fabs(abs_min), fabs(abs_max));
 	sprintf(max_str, "max_abs(Pf) = %.2e", pf_max);
 	painter->setPen("black");
 	painter->drawText(10, 40, max_str);
 	draw_txt(painter);
 }
 
-void Window::draw_residual(QPainter *painter){
+void Window::draw_residual(QPainter *painter) {
 	double a = data.a, b = data.b, c = data.c, d = data.d;
 	double mx = data.mx; double my = data.my; double (*f)(double, double) = data.f;
 
 	double hx = (b - a) / mx;
 	double hy = (d - c) / my;
-	double value, f_val, pf_val, k_rgb;
+	double val_res, f_val, pf_val, k_color;
 	int R, G, B, i, j;
-	//Point p1, p2, p3;
+	
 	double x1, y1, x2, y2, x3, y3;
-	//double abs_min = /* std:: */fabs(f(a + hx / 3.0, c + (2.0 / 3.0) * hy) - data.pf({a + hx / 3.0, c + (2.0 / 3.0) * hy}));
-	double abs_min = /* std:: */fabs(f(a + hx / 3.0, c + (2.0 / 3.0) * hy) - data.pf(a + hx / 3.0, c + (2.0 / 3.0) * hy));
+	double abs_min = fabs(f(a + hx / 3.0, c + (2.0 / 3.0) * hy) - data.pf(a + hx / 3.0, c + (2.0 / 3.0) * hy));
 	double abs_max = abs_min;
 	data.residual_min_max(abs_min, abs_max);
 
-	for (i = 0; i < mx; ++i){
-		for (j = 0; j < my; ++j){
-			/* p1 = {a + i*hx, c + j*hy};
-			p2 = {p1.x, c + (j + 1)*hy};
-			p3 = {a + (i + 1)*hx, p2.y}; */
+	for (i = 0; i < mx; ++i) {
+		for (j = 0; j < my; ++j) {
 			x1 = a + i * hx;        y1 = c + j * hy;
 			x2 = x1;                y2 = c + (j + 1) * hy;
 			x3 = a + (i + 1) * hx;  y3 = y2;
 
 			f_val = f(a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy);
-			//pf_val = data.pf({a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy});
 			pf_val = data.pf(a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy);
 
-			value = /* std:: */fabs(f_val - pf_val);
-			k_rgb = normalize(value, abs_min, abs_max);
-			rgb_for_residual(R, G, B, k_rgb);
-			triangle(painter, x1, y1, x2, y2, x3, y3, QColor(R, G, B));
-
-			//p2 = {a + (i + 1)*hx, c + j*hy};
+			val_res = fabs(f_val - pf_val);
+			k_color = search_k(val_res, abs_min, abs_max);
+			rgb_for_residual(R, G, B, k_color);
+			draw_one_element(painter, x1, y1, x2, y2, x3, y3, QColor(R, G, B));
+			
 			x2 = a + (i + 1) * hx;	y2 = c + j * hy;
 			f_val = f(a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy);
-			//pf_val = data.pf({a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy});
 			pf_val = data.pf(a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy);
 
-			value = /* std:: */fabs(f_val - pf_val);
-			k_rgb = normalize(value, abs_min, abs_max);
-			rgb_for_residual(R, G, B, k_rgb);
-			triangle(painter, x1, y1, x2, y2, x3, y3, QColor(R, G, B));
+			val_res = fabs(f_val - pf_val);
+			k_color = search_k(val_res, abs_min, abs_max);
+			rgb_for_residual(R, G, B, k_color);
+			draw_one_element(painter, x1, y1, x2, y2, x3, y3, QColor(R, G, B));
 		}
 	}
 
 	char max_str[100];
-	double res_max = std::max(std::fabs(abs_min), std::fabs(abs_max));
+	double res_max = fmax(fabs(abs_min), fabs(abs_max));
 	sprintf(max_str, "max_abs(f - Pf) = %.2e", res_max);
 	painter->setPen("black");
 	painter->drawText(10, 40, max_str);
@@ -370,14 +318,16 @@ void Window::draw_residual(QPainter *painter){
 
 // ФУНКЦИИ ДЛЯ РАБОТЫ В ОКНЕ
 
-void Window::next_func() {
+void Window::change_func() {
 	if (msr_ready()) {
 		func_id = (func_id + 1) % 8;
 		data.func_id = func_id;
-		select_f();
+		set_f();
 
 		double abs_min, abs_max;
 		f_max = data.find_min_max(abs_min, abs_max);
+		//printf("f_max = %le\n", f_max);
+		data.norma = /* (int) */f_max;
 
 		data.realloc_data();
 
@@ -393,26 +343,25 @@ void Window::next_func() {
 		if (threads_created) pthread_cond_broadcast(&cond);
 		else {
 			threads_created = true;
-			//for(int i = 0; i < data.p; i++) pthread_create(&args[i].tid, 0, solution, args + i);
 			for (int i = 0; i < data.p; i++) pthread_create(&args[i].tid, 0, thread_func, args + i);
 		}
 		QTimer::singleShot(20, this, &Window::msr_wait);
 	}
-	else QMessageBox::warning(0, "Waiting msr!!!", "Calculation not complete!");
+	else QMessageBox::warning(0, "Внимание", "Подождите конца вычислений.");
 }
 
-void Window::next_graph() {
+void Window::change_mode() {
 	n_graph = (n_graph + 1) % 3;
 	update();
 }
 
-void Window::inc_n() {
-	if(msr_ready()) {
+void Window::twice_n() {
+	if (msr_ready()) {
 		data.nx *= 2;
 		data.ny *= 2;
 		data.realloc_data();
 
-		for(int i = 0; i < data.p; i++) {
+		for (int i = 0; i < data.p; i++) {
 			args[i].copy_data(data);
 			args[i].k = i;
 			args[i].mutex = &mutex;
@@ -422,51 +371,13 @@ void Window::inc_n() {
 		pthread_cond_broadcast(&cond);
 		QTimer::singleShot(20, this, &Window::msr_wait);
 	}
-	else QMessageBox::warning(0, "Waiting msr!!!", "Calculation not complete!");
+	else QMessageBox::warning(0, "Внимание", "Подождите конца вычислений.");
 }
 
-void Window::dec_n() {
-	if(msr_ready()) {
+void Window::halve_n() {
+	if (msr_ready()) {
 		if (data.nx >= 4) data.nx /= 2;
 		if (data.ny >= 4) data.ny /= 2;
-		data.realloc_data();
-
-		for(int i = 0; i < data.p; i++) {
-			args[i].copy_data(data);
-			args[i].k = i;
-			args[i].mutex = &mutex;
-			args[i].cond = &cond;
-			args[i].ready = false;
-		}
-
-		pthread_cond_broadcast(&cond);
-		QTimer::singleShot(20, this, &Window::msr_wait);
-	} 
-	else QMessageBox::warning(0, "Waiting msr!!!", "Calculation not complete!");
-}
-
-void Window::inc_p() {
-	if(msr_ready()) {
-		p_count += 1;
-		data.realloc_data();
-
-		for(int i = 0; i < data.p; i++) {
-			args[i].copy_data(data);
-			args[i].k = i;
-			args[i].mutex = &mutex;
-			args[i].cond = &cond;
-			args[i].ready = false;
-		}
-
-		pthread_cond_broadcast(&cond);
-		QTimer::singleShot(20, this, &Window::msr_wait);
-	}
-	else QMessageBox::warning(0, "Waiting msr!!!", "Calculation not complete!");
-}
-
-void Window::dec_p() {
-	if (msr_ready()) {
-		p_count -= 1;
 		data.realloc_data();
 
 		for (int i = 0; i < data.p; i++) {
@@ -479,12 +390,54 @@ void Window::dec_p() {
 
 		pthread_cond_broadcast(&cond);
 		QTimer::singleShot(20, this, &Window::msr_wait);
-	}
-	else QMessageBox::warning(0, "Waiting msr!!!", "Calculation not complete!");
+	} 
+	else QMessageBox::warning(0, "Внимание", "Подождите конца вычислений.");
 }
 
-void Window::inc_s() {
+void Window::increase_p() {
+	if (msr_ready()) {
+		parameter += 1;
+		data.realloc_data();
+		data.parameter += 1;
+
+		for (int i = 0; i < data.p; i++) {
+			args[i].copy_data(data);
+			args[i].k = i;
+			args[i].mutex = &mutex;
+			args[i].cond = &cond;
+			args[i].ready = false;
+		}
+
+		pthread_cond_broadcast(&cond);
+		QTimer::singleShot(20, this, &Window::msr_wait);
+	}
+	else QMessageBox::warning(0, "Внимание", "Подождите конца вычислений.");
+}
+
+void Window::decrease_p() {
+	if (msr_ready()) {
+		parameter -= 1;
+		data.realloc_data();
+		data.parameter -= 1;
+
+		for (int i = 0; i < data.p; i++) {
+			args[i].copy_data(data);
+			args[i].k = i;
+			args[i].mutex = &mutex;
+			args[i].cond = &cond;
+			args[i].ready = false;
+		}
+
+		pthread_cond_broadcast(&cond);
+		QTimer::singleShot(20, this, &Window::msr_wait);
+	}
+	else QMessageBox::warning(0, "Внимание", "Подождите конца вычислений.");
+}
+
+void Window::zoom_in() {
 	double len_x = data.b - data.a, len_y = data.d - data.c;
+
+	parameter = 0;
 
 	data.a += len_x / 4;
 	data.b -= len_x / 4;
@@ -494,8 +447,10 @@ void Window::inc_s() {
 	update();
 }
 
-void Window::dec_s() {
+void Window::zoom_out() {
 	double len_x = data.b - data.a, len_y = data.d - data.c;
+
+	parameter = 0;
 
 	data.a -= len_x / 2;
 	data.b += len_x / 2;
@@ -505,7 +460,7 @@ void Window::dec_s() {
 	update();
 }
 
-void Window::inc_m() {
+void Window::twice_m() {
 	data.mx *= 2;       data.my *= 2;
 
 	double abs_min, abs_max;
@@ -514,7 +469,7 @@ void Window::inc_m() {
 	update();
 }
 
-void Window::dec_m() {
+void Window::halve_m() {
 	if (data.mx >= 4) data.mx /= 2;
 	if (data.my >= 4) data.my /= 2;
 
@@ -530,7 +485,7 @@ void Window::dec_m() {
 
 void Window::close() {
 	if (msr_ready()) widget->close();
-	else QMessageBox::warning(0, "Waiting msr!!!", "Пожалуйста, подождите конца вычислений.");
+	else QMessageBox::warning(0, "Внимание", "Подождите конца вычислений.");
 }
 
 void Window::paintEvent(QPaintEvent *) {

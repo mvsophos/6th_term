@@ -20,129 +20,6 @@ double function_7(double x, double y) 	{ return 1.0 / (1 + 25*(x*x + y*y)); }
 
 
 
-
-
-// pf это как функция у меня Pf
-/* 
-class Gui_data{
-public:
-	double *A = nullptr;
-	int    *I = nullptr;
-	double *D = nullptr;
-	double *R = nullptr;
-	double *B = nullptr;
-	double *x = nullptr;
-	double *bufer = nullptr;
-	double *u = nullptr;
-	double *v = nullptr;
-	double *r = nullptr;
-
-	double a, b, c, d;
-	double eps;
-	int nx, ny, mx, my;
-	int m;
-	int maxit;
-	int p;
-	double (*f)(double, double) = nullptr;
-
-	void realloc_data();
-	double find_min_max(double &abs_min, double &abs_max);
-	double pf(double, double);
-	void pfind_min_max(double &, double &);
-	void residual_min_max(double &, double &);
-
-	~Gui_data() {
-		if (A) delete [] A;
-		if (I) delete [] I;
-		if (R) delete [] R;
-		if (D) delete [] D;
-		if (B) delete [] B;
-		if (x) delete [] x;
-		if (bufer) delete [] bufer;
-		if (u) delete [] u;
-		if (v) delete [] v;
-		if (r) delete [] r;
-	}
-};
-
-
-
-class Args {
-public:
-	void copy_data(const Gui_data &data){
-		A = data.A;
-		I = data.I;
-		R = data.R;
-		D = data.D;
-		B = data.B;
-		x = data.x;
-		bufer = data.bufer;
-		u = data.u;
-		v = data.v;
-		r = data.r;
-		a = data.a;
-		b = data.b;
-		c = data.c;
-		d = data.d;
-		eps = data.eps;
-		nx = data.nx;
-		ny = data.ny;
-		f = data.f;
-		p = data.p;
-		maxit = data.maxit;
-	}
-
-	int nx = 0, ny = 0, N = 0, len_msr = 0, func_id = 0;
-	double a = 0, b = 0, c = 0, d = 0, hx = 0, hy = 0;
-	int p = 0, k = 0;
-
-	double 	*A = nullptr;
-	int 	*I = nullptr;
-	double	*D = nullptr;		// это для Холецкого
-	double	*R = nullptr;		// это для Холецкого
-	double 	*B = nullptr;
-	double 	*x = nullptr;
-	double	*bufer = nullptr;
-	double 	*r = nullptr;
-	double 	*u = nullptr;
-	double 	*v = nullptr;
-
-	double (*f)(double, double) = nullptr;
-
-	int its = 0, maxit = 0;
-	double eps = 0;
-	double t1 = 0, t2 = 0,r1 = -1, r2 = -1, r3 = -1, r4 = -1;
-
-	bool close_window = false;
-	bool ready = true;
-
-	pthread_t tid = 0;
-	pthread_cond_t *cond = nullptr;
-	pthread_mutex_t *mutex = nullptr;
-	double cpu_time = 0;
-	double cpu_time_of_all_threads = 0;
-	double astr_time = 0.0;					//////////////////////
-	double res = 0;
-
-	double (*set_function(int ooo))(double, double) {
-		switch (ooo) {
-		case 0: return function_0;
-		case 1: return function_1;
-		case 2: return function_2;
-		case 3: return function_3;
-		case 4: return function_4;
-		case 5: return function_5;
-		case 6: return function_6;
-		case 7: return function_7;
-		}
-		printf("Ошибка в set_function\n");
-		return 0;
-	}
-};
-*/
-
-
-
 void print_array(double *array, int n) {
 	for (int i = 0; i < n; i++) printf(" %lf ", array[i]);
 	printf("\n");
@@ -176,7 +53,7 @@ void reduce_sum(int p, double *a, int n) {
 	}
 	else while (t_in < p) pthread_cond_wait(&c_in, &mutex);
 
-	if(r != a) for (i = 0; i < n; i++) a[i] = r[i];
+	if (r != a) for (i = 0; i < n; i++) a[i] = r[i];
 
 	t_out++;
 	
@@ -210,7 +87,7 @@ void reduce_sum_int(int p, int *a, int n) {
 	}
 	else while (t_in < p) pthread_cond_wait(&c_in, &mutex);
 
-	if(r != a) for (i = 0; i < n; i++) a[i] = r[i];
+	if (r != a) for (i = 0; i < n; i++) a[i] = r[i];
 
 	t_out++;
 	
@@ -368,16 +245,17 @@ int IA_ij(int nx, int ny, double hx, double hy, int i, int j, int is, int js, in
 int get_off_diag(int nx, int ny, double hx, double hy, int i, int j, int *I, double *A) {
 	int s = 0;
 	if (i < nx) 			{ F(i + 1, j, s); s++; }
-	if(j > 0) 				{ F(i, j-1,s); s++; }
-	if(i > 0 && j > 0)		{ F(i-1, j-1, s); s++; }
-	if(i > 0)				{ F(i-1, j, s); s++; }
-	if(j < ny)				{ F(i, j+1, s); s++; }
-	if(i < nx && j < ny)	{ F(i+1, j+1, s); s++; }
+	if (j > 0) 				{ F(i, j-1,s); s++; }
+	if (i > 0 && j > 0)		{ F(i-1, j-1, s); s++; }
+	if (i > 0)				{ F(i-1, j, s); s++; }
+	if (j < ny)				{ F(i, j+1, s); s++; }
+	if (i < nx && j < ny)	{ F(i+1, j+1, s); s++; }
 	return s;
 }
 
-#define Fb(I, J) (f(a + (I) * hx, c + (J) * hy))
-double F_IJ(int nx, int ny, double hx, double hy, double a, double c, int i, int j, double (*f)(double, double)) {
+//#define Fb(I, J) (f(a + (I) * hx, c + (J) * hy))
+#define Fb(I, J) ((fabs(I - nx / 2) < 1e-15 && fabs(J - ny / 2) < 1e-15) ? (f(a + (I) * hx, c + (J) * hy)) + 0.1 * parameter * norm  :  f(a + (I) * hx, c + (J) * hy))
+double F_IJ(int nx, int ny, double hx, double hy, double a, double c, int i, int j, double (*f)(double, double), int parameter, double norm) {
 	double w = hx * hy / 192;
 	if (i > 0 && i < nx && j > 0 && j < ny) {
 		return w * (
@@ -464,7 +342,7 @@ double F_IJ(int nx, int ny, double hx, double hy, double a, double c, int i, int
 int get_len_msr_off_diag(int nx, int ny, double *A, int *I) {
 	double hx = 0, hy = 0;
 	int i, j, res = 0;
-	for(i = 0; i<=nx; i++) {
+	for (i = 0; i<=nx; i++) {
 		for (j = 0; j < ny; j++) res += get_off_diag(nx, ny, hx, hy, i, j, I, A);
 	}
 	return res;
@@ -508,18 +386,18 @@ int fill_IA(int nx, int ny, double hx, double hy, int *I, double *A, int p, int 
 		len += s;
 	}
 	reduce_sum(p, &error, 1);
-	if(error < 0) return -1;
+	if (error < 0) return -1;
 	reduce_sum_int(p, &len, 1);
 	if (I[N] != N + 1 + len) return -2;
 	return 0;
 }
 
-void fill_B(int N, int nx, int ny, double hx, double hy, double *b, double a, double c, int p, int k, double (*f)(double, double)) {
+void fill_B(int N, int nx, int ny, double hx, double hy, double *b, double a, double c, int p, int k, double (*f)(double, double), int parameter, double norma) {
 	int i1 = 0, i2 = 0, l, i = 0, j = 0;
 	thread_rows(N, p, k, i1, i2);
-	for(l = i1; l < i2; l++) {
+	for (l = i1; l < i2; l++) {
 		l2ij(nx, ny, i, j, l);
-		b[l] = F_IJ(nx, ny, hx, hy, a, c, i, j, f); 
+		b[l] = F_IJ(nx, ny, hx, hy, a, c, i, j, f, parameter, norma);
 	}
 	reduce_sum(p);
 }

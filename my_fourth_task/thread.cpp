@@ -4,8 +4,7 @@
 
 // написал эти функции тут, чтобы определить их, чтобы можно было модульно подключать все .hpp файлы
 
-//void read_data(char *argv[]);
-void Gui_data::realloc_data() {
+void Dataset::realloc_data() {
 	if (A) delete [] A;
 	if (I) delete [] I;
 	if (R) delete [] R;
@@ -19,7 +18,7 @@ void Gui_data::realloc_data() {
 
 	I = nullptr;
 	A = nullptr;
-	//alloc_msr(nx, ny, &A, &I);
+	
 	int N = (nx + 1) * (ny + 1);
 	int len = N + get_len_msr(nx, ny) + 1;
 	A = new double[len];
@@ -39,11 +38,11 @@ void Gui_data::realloc_data() {
 	memset(x, 0, N * sizeof(double));
 }
 
-double Gui_data::find_min_max(double &abs_min, double &abs_max) {
+double Dataset::find_min_max(double &abs_min, double &abs_max) {
 	double hx = (b - a) / mx, hy = (d - c) / my;
 	double value1, value2;
-	for(int i = 0; i < mx; ++i){
-		for(int j = 0; j < my; ++j){
+	for (int i = 0; i < mx; ++i) {
+		for (int j = 0; j < my; ++j) {
 			value1 = f(a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy);
 			value2 = f(a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy);
 			abs_min = fmin(abs_min, value1);
@@ -54,9 +53,8 @@ double Gui_data::find_min_max(double &abs_min, double &abs_max) {
 	}
 	return fmax(abs_min, abs_max);
 }
-//double pf(Point p);
 
-double Gui_data::pf(/* double *res,  */double x_coord, double y_coord /* , double a, double c, double hx, double hy, int nx, int ny */) {
+double Dataset::pf(/* double *res,  */double x_coord, double y_coord /* , double a, double c, double hx, double hy, int nx, int ny */) {
 	int i, j, l0, l1, l2;
 	double hx = (b - a) / nx, hy = (d - c) / ny;
 	double x0, y0, z0;
@@ -104,35 +102,31 @@ double Gui_data::pf(/* double *res,  */double x_coord, double y_coord /* , doubl
 	return det_1 / det_2;
 }
 
-void Gui_data::pfind_min_max(double &abs_min, double &abs_max) {
+void Dataset::pfind_min_max(double &abs_min, double &abs_max) {
 	double hx = (b - a) / mx, hy = (d - c) / my;
 	double value1, value2;
-	for(int i = 0; i < mx; ++i){
-		for(int j = 0; j < my; ++j){
-			//value1 = pf({a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy});
-			//value2 = pf({a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy});
+	for (int i = 0; i < mx; ++i) {
+		for (int j = 0; j < my; ++j) {
 			value1 = pf(a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy);
 			value2 = pf(a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy);
-			abs_min = std::min(abs_min, value1);
-			abs_max = std::max(abs_max, value1);
-			abs_min = std::min(abs_min, value2);
-			abs_max = std::max(abs_max, value2);
+			abs_min = fmin(abs_min, value1);
+			abs_max = fmax(abs_max, value1);
+			abs_min = fmin(abs_min, value2);
+			abs_max = fmax(abs_max, value2);
 		}
 	}
 }
 
-void Gui_data::residual_min_max(double &abs_min, double &abs_max) {
+void Dataset::residual_min_max(double &abs_min, double &abs_max) {
 	double hx = (b - a) / mx, hy = (d - c) / my;
 	double f_val, pf_val, value1, value2;
-	for(int i = 0; i < mx; ++i){
-		for(int j = 0; j < my; ++j){
+	for (int i = 0; i < mx; ++i) {
+		for (int j = 0; j < my; ++j) {
 			f_val = f(a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy);
-			//pf_val = pf({a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy});
 			pf_val = pf(a + (i + 1.0 / 3.0) * hx, c + (j + 2.0 / 3.0) * hy);
 			value1 = fabs(f_val - pf_val);
 
 			f_val = f(a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy);
-			//pf_val = pf({a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy});
 			pf_val = pf(a + (i + 2.0 / 3.0) * hx, c + (j + 1.0 / 3.0) * hy);
 			value2 = fabs(f_val - pf_val);
 
@@ -149,7 +143,7 @@ void Gui_data::residual_min_max(double &abs_min, double &abs_max) {
 
 
 // Реализация Args::copy_data
-void Args::copy_data(const Gui_data &data) {
+void Args::copy_data(const Dataset &data) {
 	A = data.A;
 	I = data.I;
 	R = data.R;
@@ -171,6 +165,8 @@ void Args::copy_data(const Gui_data &data) {
 	func_id = data.func_id;
 	p = data.p;
 	maxit = data.maxit;
+	parameter = data.parameter;
+	norma = data.norma;
 }
 
 double (*Args::set_function(int ooo))(double, double) {
@@ -225,7 +221,7 @@ void *thread_func(void *arg) {
 			int 	maxit = ptr->maxit;
 
 			//printf("this %d\n", func_id);
-			printf("\n");
+			if (k == 0) printf("\n");
 
 			int it;
 			
@@ -240,7 +236,12 @@ void *thread_func(void *arg) {
 			double 	*v = ptr->v;
 			int 	*I = ptr->I;
 
+			int parameter = ptr->parameter;	//if (k == 0) printf("param  %d\n", parameter);
+			double norma = ptr->norma;		//if (k == 0) printf("normal %lf\n", norma);
+
 			ptr->f = ptr->set_function(func_id);
+
+			
 
 			double (*f)(double, double) = ptr->f;
 
@@ -259,6 +260,8 @@ void *thread_func(void *arg) {
 
 			double hx = (b - a) / nx, hy = (d - c) / ny;
 			ptr->hx = hx, ptr->hy = hy;
+
+			// это нужно, чтобы найти норму функции (а она нужна для (я думаю можны бы сделать))
 			
 			double t1 = -1, t2 = -1, r1 = -1, r2 = -1, r3 = -1, r4 = -1, err = 0;
 
@@ -276,8 +279,8 @@ void *thread_func(void *arg) {
 			// /* вывод просто так */ printf("\n МАТРИЦА А:   "); for (int kol = 0; kol < N; kol++) printf(" [ %lf %d ] ", A[kol], I[kol]); printf("\n\n");
 			
 			reduce_sum(p, &err, 1);
-			if(fabs(err) > 0) return nullptr;
-			fill_B(N, nx, ny, hx, hy, B, a, c, p, k, f);		// f используется здесь для задания B, поэтому надо чтобы она была нормальной
+			if (fabs(err) > 0) return nullptr;
+			fill_B(N, nx, ny, hx, hy, B, a, c, p, k, f, parameter, norma);		// f используется здесь для задания B, поэтому надо чтобы она была нормальной
 			fill_RD(nx, ny, A, I, R, D, p, k);
 
 			//printf("Values: %lf %lf %lf\n", B[N - 2], B[4], B[1]);
@@ -327,128 +330,3 @@ void *thread_func(void *arg) {
 }
 
 
-
-/* 
-int main(int argc, char *argv[]) {
-	feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW | FE_UNDERFLOW);
-
-	double a = 0, b = 0, c = 0, d = 0, eps = 0;				// параметры
-	int nx = 0, ny = 0, func_id = 0, maxit = 0, p = 0;		// параметры
-
-	int i, k;		// итераторы
-
-	if ( !(argc == 11 && 
-		sscanf(argv[1], "%lf", &a) == 1 && 
-		sscanf(argv[2], "%lf", &b) == 1 && 
-		sscanf(argv[3], "%lf", &c) == 1 && 
-		sscanf(argv[4], "%lf", &d) == 1 && 
-		sscanf(argv[5], "%d", &nx) == 1 && nx > 0 &&
-		sscanf(argv[6], "%d", &ny) == 1 && ny > 0 &&
-		sscanf(argv[7], "%d", &func_id) == 1 && func_id >= 0 && func_id <= 7 &&
-		sscanf(argv[8], "%lf", &eps) == 1 && eps > 0 && 
-		sscanf(argv[9], "%d", &maxit) == 1 && maxit > 0 && 
-		sscanf(argv[10], "%d", &p) == 1 && p > 0) ) {
-		printf("Usage : %s  a  b  c  d  nx  ny  f_id  eps  maxit  p \n", argv[0]);
-		return -1;
-	}
-
-	Args *duck = nullptr;
-	duck = new Args[p];
-
-	double 	*A = nullptr;
-	int 	*I = nullptr;
-	double 	*R = nullptr;
-	double 	*D = nullptr;
-	double 	*B = nullptr;
-	double 	*x = nullptr;
-	double 	*bufer = nullptr;
-	double 	*r = nullptr;
-	double 	*u = nullptr;
-	double 	*v = nullptr;
-
-	int N = (nx + 1) * (ny + 1);
-	int len_msr = N + 1 + get_len_msr(nx, ny);
-
-	double t1 = 0, t2 = 0, r1 = -1, r2 = -1, r3 = -1, r4 = -1;
-
-	A = new double[len_msr];
-	I = new int[len_msr];
-	R = new double[len_msr];		for (i = 0; i < len_msr; i++) R[i] = 0;
-	D = new double[len_msr];
-	B = new double[N];
-	x = new double[N];
-	bufer = new double[N];
-	r = new double[N];
-	u = new double[N];
-	v = new double[N];
-
-	init_reduce_sum(p);
-
-	for (k = 0; k < p; k++) {
-		duck[k].p = p;
-		duck[k].k = k;
-		duck[k].A = A;
-		duck[k].I = I;
-		duck[k].R = R;
-		duck[k].D = D;
-		duck[k].B = B;
-		duck[k].x = x;
-		duck[k].bufer = bufer;
-		duck[k].r = r;
-		duck[k].u = u;
-		duck[k].v = v;
-		duck[k].N = N;
-		duck[k].len_msr = len_msr;
-		duck[k].nx = nx;
-		duck[k].ny = ny;
-		duck[k].a = a;
-		duck[k].b = b;
-		duck[k].c = c;
-		duck[k].d = d;
-		duck[k].hx = fabs(b - a) / nx;
-		duck[k].hy = fabs(d - c) / ny;
-		duck[k].func_id = func_id;
-		duck[k].eps = eps;
-		duck[k].maxit = maxit;
-	}
-
-
-	for (k = 1; k < p; k++) {
-		if (pthread_create(&duck[k].tid, nullptr, thread_func, duck + k)) {
-			printf("Ошибочка при создании потока %d\n", k);
-			// вообще-то надо чистить память
-			return -2;
-		}
-	}
-	duck[0].tid = pthread_self();
-
-	thread_func(duck);
-
-	for (k = 1; k < p; k++) pthread_join(duck[k].tid, nullptr);
-
-	int it = duck->all_iters;
-	t1 = duck->t1;
-	t2 = duck->t2;
-	r1 = duck->r1;
-	r2 = duck->r2;
-	r3 = duck->r3;
-	r4 = duck->r4;
-
-	printf("%s : Task = %d R1 = %e R2 = %e R3 = %e R4 = %e T1 = %.2f T2 = %.2f It = %d E = %e K = %d Nx = %d Ny = %d P = %d\n", argv[0], 8, r1, r2, r3, r4, t1, t2, it, eps, func_id, nx, ny, p);
-
-	one_deletion_of_results();
-	
-	delete [] A;
-	delete [] I;
-	delete [] R;
-	delete [] D;
-	delete [] B;
-	delete [] x;
-	delete [] bufer;
-	delete [] r;
-	delete [] u;
-	delete [] v;
-	delete [] duck;
-	return 0;
-}
-*/
