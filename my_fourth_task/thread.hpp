@@ -9,7 +9,7 @@
 
 
 
-#define DEF_EPS 1e-16
+#define DEF_EPS 1e-13
 #define EPS 1e-12
 
 #define abs_maxiters 200
@@ -42,7 +42,7 @@ public:
 	int parameter;
 	double norma;
 
-	void realloc_data();
+	void repeat_new_data();
 	double find_min_max(double &abs_min, double &abs_max);
 	double pf(double, double);
 	void pfind_min_max(double &, double &);

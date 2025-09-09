@@ -4,7 +4,7 @@
 
 // написал эти функции тут, чтобы определить их, чтобы можно было модульно подключать все .hpp файлы
 
-void Dataset::realloc_data() {
+void Dataset::repeat_new_data() {
 	if (A) delete [] A;
 	if (I) delete [] I;
 	if (R) delete [] R;

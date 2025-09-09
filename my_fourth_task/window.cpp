@@ -56,7 +56,7 @@ int Window::parse_command_line(int argc, char *argv[]) {
 
 	//data.read_data(argv);
 	//printf("epsilon = %lf\n", data.eps);
-	data.realloc_data();
+	data.repeat_new_data();
 
 	args = new Args[data.p];
 	tid = new pthread_t[data.p];
@@ -329,7 +329,7 @@ void Window::change_func() {
 		//printf("f_max = %le\n", f_max);
 		data.norma = /* (int) */f_max;
 
-		data.realloc_data();
+		data.repeat_new_data();
 
 		for (int k = 0; k < data.p; k++) {
 			args[k].copy_data(data);
@@ -359,7 +359,7 @@ void Window::twice_n() {
 	if (msr_ready()) {
 		data.nx *= 2;
 		data.ny *= 2;
-		data.realloc_data();
+		data.repeat_new_data();
 
 		for (int i = 0; i < data.p; i++) {
 			args[i].copy_data(data);
@@ -378,7 +378,7 @@ void Window::halve_n() {
 	if (msr_ready()) {
 		if (data.nx >= 4) data.nx /= 2;
 		if (data.ny >= 4) data.ny /= 2;
-		data.realloc_data();
+		data.repeat_new_data();
 
 		for (int i = 0; i < data.p; i++) {
 			args[i].copy_data(data);
@@ -397,7 +397,7 @@ void Window::halve_n() {
 void Window::increase_p() {
 	if (msr_ready()) {
 		parameter += 1;
-		data.realloc_data();
+		data.repeat_new_data();
 		data.parameter += 1;
 
 		for (int i = 0; i < data.p; i++) {
@@ -417,7 +417,7 @@ void Window::increase_p() {
 void Window::decrease_p() {
 	if (msr_ready()) {
 		parameter -= 1;
-		data.realloc_data();
+		data.repeat_new_data();
 		data.parameter -= 1;
 
 		for (int i = 0; i < data.p; i++) {
@@ -438,6 +438,7 @@ void Window::zoom_in() {
 	double len_x = data.b - data.a, len_y = data.d - data.c;
 
 	parameter = 0;
+	data.parameter = 0;
 
 	data.a += len_x / 4;
 	data.b -= len_x / 4;
@@ -451,6 +452,7 @@ void Window::zoom_out() {
 	double len_x = data.b - data.a, len_y = data.d - data.c;
 
 	parameter = 0;
+	data.parameter = 0;
 
 	data.a -= len_x / 2;
 	data.b += len_x / 2;
@@ -484,7 +486,12 @@ void Window::halve_m() {
 // ЕЩЕ ДВА МЕТОДА
 
 void Window::close() {
-	if (msr_ready()) widget->close();
+	if (msr_ready()) {
+		//one_deletion_of_results();
+		/* if (args)	delete[] args;
+		if (tid)	delete[] tid; */
+		widget->close();
+	}
 	else QMessageBox::warning(0, "Внимание", "Подождите конца вычислений.");
 }
 

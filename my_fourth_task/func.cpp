@@ -539,21 +539,29 @@ void all_residuals(double &r1, double &r2, double &r3, double &r4, double *x, do
 
 // нахождение матрицы R и D (разложение Холецкого)
 void fill_RD (int nx, int ny, double *A, int *I, double *R, double *D, int p, int k) {
-	int N = (int)(nx + 1) * (ny + 1), l1, l2, l, len_s, len_j, len_i;
-	int i, j, s, q, m, iter_i, iter_j;			// итераторы
-	int count = 0;
+	int N = (int)(nx + 1) * (ny + 1), l1, l2, /* l, len_s, */ len_j, len_i;
+	int i, j, s, q, /* m, */ iter_i, iter_j;			// итераторы
+	//int count = 0;
 	double temp, sum;
 
 	thread_rows(N, p, k, l1, l2);
 
 	for (i = l1; i < l2; i++) {
 		sum = 0;
-		for (s = l1; s < i; s++) {
+
+		// ВОТ В ЭТОМ ФРАГМЕНТЕ Я ОЧЕНЬ СИЛЬНО ТЕРЯЛ СКОРОСТЬ.
+		/* for (s = l1; s < i; s++) {
 			len_s = I[s + 1] - I[s];
 			for (l = 0; l < len_s; l++) if (I[I[s] + l] == i) break;
 
 			if (l < len_s) sum += D[s] * R[I[s] + l] * R[I[s] + l];
 			else count += 1;
+		} */
+		
+		int len_s = I[i + 1] - I[i];
+		for (s = 0; s < len_s; s ++) {
+			j = I[I[i] + s];
+			if (l1 <= j && j < i)	sum += D[j] * R[I[j] + s] * R[I[j] + s];
 		}
 
 		temp = A[i] - sum;
@@ -561,7 +569,8 @@ void fill_RD (int nx, int ny, double *A, int *I, double *R, double *D, int p, in
 		D[i] = sign(temp);
 
 		len_i = I[i + 1] - I[i];
-		for (m = 0; m < len_i; m++) {
+		// И В ЭТОМ ФРАГМЕНТЕ ТОЖЕ БЫЛО КРИТИЧЕСКОЕ ЗАМЕДЛЕНИЕ
+		/* for (m = 0; m < len_i; m++) {
 			j = I[I[i] + m];
 
 			if (j > i && l1 <= j && j < l2) {
@@ -579,6 +588,30 @@ void fill_RD (int nx, int ny, double *A, int *I, double *R, double *D, int p, in
 				for (q = 0; q < len_j; q++) if (I[I[j] + q] == i) break;
 
 				if (q < len_j) R[I[j] + q] = R[I[i] + m];
+			}
+		} */
+		for (int m = 0; m < len_i; m++) {
+			j = I[I[i] + m];
+			if (j > i && l1 <= j && j < l2) {
+				sum = 0;
+				for (s = 0; s < len_i; s++) {
+					iter_j = I[I[i] + s];
+					if (l1 <= iter_j && iter_j < i) {
+						len_j = I[j + 1] - I[j];
+						q = 0;
+						for (q = 0; q < len_j; q++) {
+							if (I[I[j] + q] == iter_j) break;
+						}
+						if (q < len_j) sum += D[iter_j] * R[I[i] + s] * R[I[j] + q];
+					}
+				}
+				R[I[i] + m] = (A[I[i] + m] - sum) / (R[i] * D[i]);
+				len_j = I[j + 1] - I[j];
+				
+				for (iter_i = 0; iter_i < len_j; iter_i++) {
+					if (I[I[j] + iter_i] == i) break;
+				}
+				if (iter_i < len_j) R[I[j] + iter_i] = R[I[i] + m];
 			}
 		}
 	}
