@@ -1,9 +1,9 @@
 QT += widgets
-TARGET = a.out
+TARGET = basic_graph
 
-HEADERS       = window.hpp \
-		func.hpp \
-		thread.hpp
+HEADERS       = window.h \
+		func.h \
+		thread.h
 
 SOURCES       = main.cpp \
                 window.cpp \

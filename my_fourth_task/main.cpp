@@ -4,8 +4,8 @@
 #include <QtWidgets/QAction>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QMessageBox>
-#include "window.hpp"
-#include "func.hpp"
+#include "window.h"
+#include "func.h"
 
 
 

@@ -1,6 +1,6 @@
-#include "window.hpp"
-#include "func.hpp"
-#include "thread.hpp"
+#include "window.h"
+#include "func.h"
+#include "thread.h"
 
 
 
@@ -15,7 +15,7 @@ bool Window::msr_ready() {
 
 void Window::msr_wait() {
 	if (msr_ready()) {
-		printf("%s : Task = 8 R1 = %e R2 = %e R3 = %e R4 = %e T1 = %.2f T2 = %.2f\n It = %d E = %le K = %d Nx = %d Ny = %d P = %d\n", 
+		printf("%s : Task = 8 R1 = %e R2 = %e R3 = %e R4 = %e T1 = %.2f T2 = %.2f It = %d E = %le K = %d Nx = %d Ny = %d P = %d\n", 
 			program_name, args[0].r1, args[0].r2, args[0].r3, args[0].r4, args[0].t1, args[0].t2, args[0].its, data.eps, func_id, data.nx, data.ny, data.p);
 		update();
 	}
@@ -39,9 +39,9 @@ void Window::draw_txt(QPainter *painter) {
 	painter->drawText(10, 140, stroka);
 	sprintf(stroka, "ny = %d", data.ny);
 	painter->drawText(10, 160, stroka);
-	sprintf(stroka, "mx = %d", data.mx);
+	sprintf(stroka, "mx = %d", data._mx);
 	painter->drawText(10, 180, stroka);
-	sprintf(stroka, "my = %d", data.my);
+	sprintf(stroka, "my = %d", data._my);
 	painter->drawText(10, 200, stroka);
 	sprintf(stroka, "p  = %d", data.parameter);
 	painter->drawText(10, 220, stroka);
@@ -52,10 +52,21 @@ void Window::draw_txt(QPainter *painter) {
 
 
 int Window::parse_command_line(int argc, char *argv[]) {
-	if (argc != 13 || sscanf(argv[1], "%lf", &data.a) != 1 || sscanf(argv[2], "%lf", &data.b) != 1 || sscanf(argv[3], "%lf", &data.c) != 1 || sscanf(argv[4], "%lf", &data.d) != 1 || sscanf(argv[5], "%d", &data.nx) != 1 || sscanf(argv[6], "%d", &data.ny) != 1|| sscanf(argv[7], "%d", &data.mx) != 1 || sscanf(argv[8], "%d", &data.my) != 1 || sscanf(argv[9], "%d", &data.func_id) != 1 || sscanf(argv[10], "%lf", &data.eps) != 1 || sscanf(argv[11], "%d", &data.maxit) != 1 || sscanf(argv[12], "%d", &data.p) != 1) return -1;
+	if (argc != 13 || sscanf(argv[1], "%lf", &data.a) != 1 || sscanf(argv[2], "%lf", &data.b) != 1 || sscanf(argv[3], "%lf", &data.c) != 1 || sscanf(argv[4], "%lf", &data.d) != 1 || sscanf(argv[5], "%d", &data.nx) != 1 || sscanf(argv[6], "%d", &data.ny) != 1|| sscanf(argv[7], "%d", &data._mx) != 1 || sscanf(argv[8], "%d", &data._my) != 1 || sscanf(argv[9], "%d", &data.func_id) != 1 || sscanf(argv[10], "%lf", &data.eps) != 1 || sscanf(argv[11], "%d", &data.maxit) != 1 || sscanf(argv[12], "%d", &data.p) != 1) return -1;
+
+	if (data._mx <= DEF__MX)	data.mx = data._mx;
+	else data.mx = DEF__MX;
+	if (data._my <= DEF__MY)	data.my = data._my;
+	else data.my = DEF__MY;
+
+	//data._mx = data.mx;	data._my = data.my;
 
 	//data.read_data(argv);
 	//printf("epsilon = %lf\n", data.eps);
+	if (data.eps < 1e-14) {
+		printf("Слишком маленький эпсилон, увеличить его быстро!\n");
+		data.eps = DEF_EPS;
+	}
 	data.repeat_new_data();
 
 	args = new Args[data.p];
@@ -63,6 +74,7 @@ int Window::parse_command_line(int argc, char *argv[]) {
 	program_name = argv[0];
 	func_id = data.func_id - 1;
 	data.func_id = func_id;
+	data.parameter = 0;
 
 	//printf("epsilon = %le\n", data.eps);
 	//printf("func_id = %d\n", data.func_id);
@@ -75,8 +87,11 @@ int Window::parse_command_line(int argc, char *argv[]) {
 		args[k].mutex = &mutex;
 		args[k].cond = &cond;
 	}
+	
+	//one_deletion_of_results();//
 
 	change_func();
+    
 	return 0;
 }
 
@@ -87,6 +102,7 @@ Window::Window(QWidget *parent): QWidget(parent) {
 Window::~Window() {
 	if (args) delete[] args;
 	if (tid) delete[] tid;
+    one_deletion_of_results();
 }
 
 QSize Window::minimumSizeHint() const {
@@ -324,7 +340,7 @@ void Window::change_func() {
 		data.func_id = func_id;
 		set_f();
 
-		double abs_min, abs_max;
+		double abs_min = DEF_ABS_MIN, abs_max = DEF_ABS_MIN;
 		f_max = data.find_min_max(abs_min, abs_max);
 		//printf("f_max = %le\n", f_max);
 		data.norma = /* (int) */f_max;
@@ -346,6 +362,7 @@ void Window::change_func() {
 			for (int i = 0; i < data.p; i++) pthread_create(&args[i].tid, 0, thread_func, args + i);
 		}
 		QTimer::singleShot(20, this, &Window::msr_wait);
+        //one_deletion_of_results();
 	}
 	else QMessageBox::warning(0, "Внимание", "Подождите конца вычислений.");
 }
@@ -370,6 +387,7 @@ void Window::twice_n() {
 		}
 		pthread_cond_broadcast(&cond);
 		QTimer::singleShot(20, this, &Window::msr_wait);
+        //one_deletion_of_results();
 	}
 	else QMessageBox::warning(0, "Внимание", "Подождите конца вычислений.");
 }
@@ -390,6 +408,7 @@ void Window::halve_n() {
 
 		pthread_cond_broadcast(&cond);
 		QTimer::singleShot(20, this, &Window::msr_wait);
+        //one_deletion_of_results();
 	} 
 	else QMessageBox::warning(0, "Внимание", "Подождите конца вычислений.");
 }
@@ -410,6 +429,7 @@ void Window::increase_p() {
 
 		pthread_cond_broadcast(&cond);
 		QTimer::singleShot(20, this, &Window::msr_wait);
+        //one_deletion_of_results();
 	}
 	else QMessageBox::warning(0, "Внимание", "Подождите конца вычислений.");
 }
@@ -430,6 +450,7 @@ void Window::decrease_p() {
 
 		pthread_cond_broadcast(&cond);
 		QTimer::singleShot(20, this, &Window::msr_wait);
+        //one_deletion_of_results();
 	}
 	else QMessageBox::warning(0, "Внимание", "Подождите конца вычислений.");
 }
@@ -463,19 +484,29 @@ void Window::zoom_out() {
 }
 
 void Window::twice_m() {
-	data.mx *= 2;       data.my *= 2;
+	data._mx = data._mx * 2;	data._my = data._my * 2;
+	/* if (data.mx <= 320) data.mx *= 2;
+	if (data.my <= 180) data.my *= 2; */
+	data.mx *= 2;	data.my *= 2;
+	if (data.mx > DEF__MX)	data.mx = DEF__MX;
+	if (data.my > DEF__MY)	data.my = DEF__MY;
 
-	double abs_min, abs_max;
+	double abs_min = DEF_ABS_MIN, abs_max = DEF_ABS_MIN;
 	f_max = data.find_min_max(abs_min, abs_max);
 
 	update();
 }
 
 void Window::halve_m() {
-	if (data.mx >= 4) data.mx /= 2;
-	if (data.my >= 4) data.my /= 2;
+	// если _mx и _my деленный на два больше DEF__MX и DEF__MY то его считаем таким
+	if (data._mx >= 4) data._mx = data._mx / 2;
+	if (data._my >= 4) data._my = data._my / 2;
+	if (data._mx > DEF__MX) data.mx = DEF__MX;
+	else if (data.mx >= 4)	data.mx = data._mx;
+	if (data._my > DEF__MY) data.my = DEF__MY;
+	else if (data.my >= 4)	data.my = data._my;
 
-	double abs_min, abs_max;
+	double abs_min = DEF_ABS_MIN, abs_max = DEF_ABS_MIN;
 	f_max = data.find_min_max(abs_min, abs_max);
 
 	update();

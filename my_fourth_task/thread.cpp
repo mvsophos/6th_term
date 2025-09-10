@@ -1,5 +1,5 @@
-#include "thread.hpp"
-#include "func.hpp"
+#include "thread.h"
+#include "func.h"
 
 
 // написал эти функции тут, чтобы определить их, чтобы можно было модульно подключать все .hpp файлы
@@ -26,7 +26,7 @@ void Dataset::repeat_new_data() {
 	D = new double[len];
 	R = new double[len];		for (int i = 0; i < len; i++) R[i] = 0;
 
-	init_reduce_sum(p);
+	//init_reduce_sum(p);
 	B = new double[N];
 	x = new double[N];
 	bufer = new double[N];
@@ -204,7 +204,7 @@ void *thread_func(void *arg) {
 	pthread_t tid = pthread_self();
 	pthread_setaffinity_np(tid, sizeof(cpu), &cpu);
 
-
+    if (q == 0) init_reduce_sum(p);
 
 	while (!(ptr->close_window)) {
 		if (!ptr->ready) {
@@ -248,7 +248,7 @@ void *thread_func(void *arg) {
 			//printf("k = %d\n", k);
 			N = (nx + 1) * (ny + 1);
 
-			if (k == 0) init_reduce_sum(p);
+			//if (k == 0) init_reduce_sum(p);        //мало того что это создает утечки памяти так еще и не нужно вообще
 			reduce_sum(p);
 
 			

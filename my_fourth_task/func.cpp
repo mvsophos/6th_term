@@ -7,7 +7,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <fenv.h>				// для обработки исключений с помощью feenableexcept
-#include "func.hpp"
+#include "func.h"
 
 double function_0(double, double) 		{ return 1.0; }
 double function_1(double x, double) 	{ return x; }
