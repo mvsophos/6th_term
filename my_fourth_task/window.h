@@ -15,8 +15,9 @@ private:
     int func_id;
     const char *f_name;
     const char *program_name;
-    int n_graph = 0;
+    int mode = 0;
     double f_max;
+    double F_max, PF_max, RES_max;
     int parameter = 0;
     double norma = 0;
 

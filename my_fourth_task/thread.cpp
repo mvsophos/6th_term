@@ -221,7 +221,7 @@ void *thread_func(void *arg) {
 			int 	maxit = ptr->maxit;
 
 			//printf("this %d\n", func_id);
-			if (k == 0) printf("\n");
+			//if (k == 0) printf("\n");
 
 			int it;
 			

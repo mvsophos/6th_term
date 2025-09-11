@@ -15,8 +15,14 @@ bool Window::msr_ready() {
 
 void Window::msr_wait() {
 	if (msr_ready()) {
-		printf("%s : Task = 8 R1 = %e R2 = %e R3 = %e R4 = %e T1 = %.2f T2 = %.2f It = %d E = %le K = %d Nx = %d Ny = %d P = %d\n", 
+		printf("\n\n%s : Task = 8 R1 = %e R2 = %e R3 = %e R4 = %e T1 = %.2f T2 = %.2f It = %d E = %le K = %d Nx = %d Ny = %d P = %d\n", 
 			program_name, args[0].r1, args[0].r2, args[0].r3, args[0].r4, args[0].t1, args[0].t2, args[0].its, data.eps, func_id, data.nx, data.ny, data.p);
+		//printf("max{|F_min|, |F_max|} = %le\n", f_max);
+		/* switch (mode) {
+			case 0:		printf("max{|F_min|, |F_max|} = %le\n", F_max); break;
+			case 1:		printf("max{|F_min|, |F_max|} = %le\n", PF_max); break;
+			case 2:		printf("max{|F_min|, |F_max|} = %le\n", RES_max); break;
+		} */
 		update();
 	}
 	else {
@@ -119,35 +125,35 @@ void Window::set_f() {
     double (*f)(double, double) = data.f;
     switch(func_id) {
     case 0:
-        f_name = "f(x, y) = 1";
+        f_name = "k = 0; f(x, y) = 1";
         f = function_0;
         break;
     case 1:
-        f_name = "f(x, y) = x";
+        f_name = "k = 1; f(x, y) = x";
         f = function_1;
         break;
     case 2:
-        f_name = "f(x, y) = y";
+        f_name = "k = 2; f(x, y) = y";
         f = function_2;
         break;
     case 3:
-        f_name = "f(x, y) = x + y";
+        f_name = "k = 3; f(x, y) = x + y";
         f = function_3;
         break;
     case 4:
-        f_name = "f(x, y) = sqrt(x*x + y*y)";
+        f_name = "k = 4; f(x, y) = sqrt(x*x + y*y)";
         f = function_4;
         break;
     case 5:
-        f_name = "f(x, y) = x*x + y*y";
+        f_name = "k = 5; f(x, y) = x*x + y*y";
         f = function_5;
         break;
     case 6:
-        f_name = "f(x, y) = exp(x*x - y*y)";
+        f_name = "k = 6; f(x, y) = exp(x*x - y*y)";
         f = function_6;
         break;
     case 7:
-        f_name = "f(x, y) = 1 / (25(x*x + y*y) + 1)";
+        f_name = "k = 7; f(x, y) = 1 / (25(x*x + y*y) + 1)";
         f = function_7;
         break;
     }
@@ -207,6 +213,7 @@ void Window::draw_f(QPainter *painter) {
 
 	double hx = (b - a) / mx;
 	double hy = (d - c) / my;
+	//printf("F = %lf %lf. %lf %lf %lf %lf\n", hx, hy, a, b, c, d);
 	double val_f, k_color;
 	int R, G, B, i, j;
 	
@@ -236,7 +243,8 @@ void Window::draw_f(QPainter *painter) {
 
 	char max_str[100];
 	double f_max = fmax(fabs(abs_min), fabs(abs_max));
-	sprintf(max_str, "max_abs(f) = %.2e", f_max);
+	F_max = f_max;		printf("max{|F_min|, |F_max|} = %le\n", F_max);
+	sprintf(max_str, "max{|F_min|, |F_max|} = %.2e", f_max);
 	painter->setPen("black");
 	painter->drawText(10, 40, max_str);
 	draw_txt(painter);
@@ -248,6 +256,7 @@ void Window::draw_Pf(QPainter *painter) {
 
 	double hx = (b - a) / mx;
 	double hy = (d - c) / my;
+	//printf("PF = %lf %lf. %lf %lf %lf %lf\n", hx, hy, a, b, c, d);
 	double val_Pf, k_color;
 	int R, G, B, i, j;
 	
@@ -277,7 +286,8 @@ void Window::draw_Pf(QPainter *painter) {
 
 	char max_str[100];
 	double pf_max = fmax(fabs(abs_min), fabs(abs_max));
-	sprintf(max_str, "max_abs(Pf) = %.2e", pf_max);
+	PF_max = pf_max;		printf("max{|F_min|, |F_max|} = %le\n", PF_max);
+	sprintf(max_str, "max{|F_min|, |F_max|} = %.2e", pf_max);
 	painter->setPen("black");
 	painter->drawText(10, 40, max_str);
 	draw_txt(painter);
@@ -324,7 +334,8 @@ void Window::draw_residual(QPainter *painter) {
 
 	char max_str[100];
 	double res_max = fmax(fabs(abs_min), fabs(abs_max));
-	sprintf(max_str, "max_abs(f - Pf) = %.2e", res_max);
+	RES_max = res_max;		printf("max{|F_min|, |F_max|} = %le\n", RES_max);
+	sprintf(max_str, "max{|f - Pf|} = %.2e", res_max);
 	painter->setPen("black");
 	painter->drawText(10, 40, max_str);
 	draw_txt(painter);
@@ -368,8 +379,14 @@ void Window::change_func() {
 }
 
 void Window::change_mode() {
-	n_graph = (n_graph + 1) % 3;
+	mode = (mode + 1) % 3;
 	update();
+	// то что ниже работает плохо
+	/* switch (mode) {
+		case 0:		printf("max{|F_min|, |F_max|} = %le\n", F_max); break;
+		case 1:		printf("max{|F_min|, |F_max|} = %le\n", PF_max); break;
+		case 2:		printf("max{|F_min|, |F_max|} = %le\n", RES_max); break;
+	} */
 }
 
 void Window::twice_n() {
@@ -466,6 +483,7 @@ void Window::zoom_in() {
 	data.c += len_y / 4;
 	data.d -= len_y / 4;
 
+	//halve_m();
 	update();
 }
 
@@ -480,6 +498,7 @@ void Window::zoom_out() {
 	data.c -= len_y / 2;
 	data.d += len_y / 2;
 
+	//twice_m();
 	update();
 }
 
@@ -528,8 +547,8 @@ void Window::close() {
 
 void Window::paintEvent(QPaintEvent *) {
 	QPainter painter(this);
-	if (n_graph == 0)       draw_f(&painter);
-	else if (n_graph == 1)  draw_Pf(&painter);
-	else                    draw_residual(&painter);
+	if (mode == 0)       draw_f(&painter);
+	else if (mode == 1)  draw_Pf(&painter);
+	else                 draw_residual(&painter);
 }
 
