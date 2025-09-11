@@ -54,9 +54,10 @@ double Dataset::find_min_max(double &abs_min, double &abs_max) {
 	return fmax(abs_min, abs_max);
 }
 
+// чтобы вернуть все как было надо стереть _constantin
 double Dataset::pf(/* double *res,  */double x_coord, double y_coord /* , double a, double c, double hx, double hy, int nx, int ny */) {
 	int i, j, l0, l1, l2;
-	double hx = (b - a) / nx, hy = (d - c) / ny;
+	double hx = (b_constantin - a_constantin) / nx, hy = (d_constantin - c_constantin) / ny;
 	double x0, y0, z0;
 	double x1, y1, z1;
 	double x2, y2, z2;
@@ -66,28 +67,28 @@ double Dataset::pf(/* double *res,  */double x_coord, double y_coord /* , double
 
 	double det_1, det_2, condition;
 
-	i = (x_coord - a) / hx;	j = (y_coord - c) / hy;
+	i = (x_coord - a_constantin) / hx;	j = (y_coord - c_constantin) / hy;
 
 	ij2l(nx, ny, i,     j,     l0);
 	ij2l(nx, ny, i + 1, j + 1, l2);
 
-	x0 = a + i * hx;	y0 = c + j * hy;	z0 = x[l0];
+	x0 = a_constantin + i * hx;	y0 = c_constantin + j * hy;	z0 = x[l0];
 	condition = hy * (x_coord - x0) / hx;	condition += y0 - y_coord;
 
 	if (condition >= 0) {
 		ij2l(nx, ny, i + 1, j, l1);
-		x1 = a + (i + 1) * hx;
-		y1 = c + j * hy;
+		x1 = a_constantin + (i + 1) * hx;
+		y1 = c_constantin + j * hy;
 	}
 	else {
 		ij2l(nx, ny, i, j + 1, l1);
-		x1 = a + i * hx;
-		y1 = c + (j + 1) * hy;
+		x1 = a_constantin + i * hx;
+		y1 = c_constantin + (j + 1) * hy;
 	}
 	z1 = x[l1];
 	ij2l(nx, ny, i + 1, j + 1, l2);
 
-	x2 = a + (i + 1) * hx;		y2 = c + (j + 1) * hy;		z2 = x[l2];
+	x2 = a_constantin + (i + 1) * hx;		y2 = c_constantin + (j + 1) * hy;		z2 = x[l2];
 
 	dx0 = x_coord  - x0;	dy0 = y_coord  - y0;
 	dx1 = x1 - x0;			dy1 = y1 - y0;			dz1 = z1 - z0;

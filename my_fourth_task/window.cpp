@@ -65,6 +65,8 @@ int Window::parse_command_line(int argc, char *argv[]) {
 	if (data._my <= DEF__MY)	data.my = data._my;
 	else data.my = DEF__MY;
 
+	data.a_constantin = data.a; data.b_constantin = data.b; data.c_constantin = data.c; data.d_constantin = data.d;
+
 	//data._mx = data.mx;	data._my = data.my;
 
 	//data.read_data(argv);
@@ -347,6 +349,7 @@ void Window::draw_residual(QPainter *painter) {
 
 void Window::change_func() {
 	if (msr_ready()) {
+		data.a = data.a_constantin; data.b = data.b_constantin; data.c = data.c_constantin; data.d = data.d_constantin;		// этого не было
 		func_id = (func_id + 1) % 8;
 		data.func_id = func_id;
 		set_f();
@@ -391,6 +394,7 @@ void Window::change_mode() {
 
 void Window::twice_n() {
 	if (msr_ready()) {
+		data.a = data.a_constantin; data.b = data.b_constantin; data.c = data.c_constantin; data.d = data.d_constantin;		// этого не было
 		data.nx *= 2;
 		data.ny *= 2;
 		data.repeat_new_data();
@@ -411,6 +415,7 @@ void Window::twice_n() {
 
 void Window::halve_n() {
 	if (msr_ready()) {
+		data.a = data.a_constantin; data.b = data.b_constantin; data.c = data.c_constantin; data.d = data.d_constantin;		// этого не было
 		if (data.nx >= 4) data.nx /= 2;
 		if (data.ny >= 4) data.ny /= 2;
 		data.repeat_new_data();
@@ -432,6 +437,7 @@ void Window::halve_n() {
 
 void Window::increase_p() {
 	if (msr_ready()) {
+		data.a = data.a_constantin; data.b = data.b_constantin; data.c = data.c_constantin; data.d = data.d_constantin;		// этого не было
 		parameter += 1;
 		data.repeat_new_data();
 		data.parameter += 1;
@@ -453,6 +459,7 @@ void Window::increase_p() {
 
 void Window::decrease_p() {
 	if (msr_ready()) {
+		data.a = data.a_constantin; data.b = data.b_constantin; data.c = data.c_constantin; data.d = data.d_constantin;		// этого не было
 		parameter -= 1;
 		data.repeat_new_data();
 		data.parameter -= 1;
@@ -483,23 +490,27 @@ void Window::zoom_in() {
 	data.c += len_y / 4;
 	data.d -= len_y / 4;
 
-	//halve_m();
 	update();
 }
 
 void Window::zoom_out() {
 	double len_x = data.b - data.a, len_y = data.d - data.c;
 
-	parameter = 0;
-	data.parameter = 0;
+	if (data.a > data.a_constantin + DEF_EPS) {
+		parameter = 0;
+		data.parameter = 0;
 
-	data.a -= len_x / 2;
-	data.b += len_x / 2;
-	data.c -= len_y / 2;
-	data.d += len_y / 2;
+		data.a -= len_x / 2;
+		data.b += len_x / 2;
+		data.c -= len_y / 2;
+		data.d += len_y / 2;
 
-	//twice_m();
-	update();
+		update();
+	}
+	else {
+		printf("Нельзя отдаляться дальше!\n");
+		QMessageBox::warning(0, "Текущий масштаб минимален", "Это исходный масштаб и уменьшать его больше нельзя.");
+	}
 }
 
 void Window::twice_m() {

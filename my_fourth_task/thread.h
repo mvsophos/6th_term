@@ -16,6 +16,8 @@
 
 #define abs_maxiters 200
 
+
+
 void *thread_func(void *arg);
 
 class Dataset {
@@ -32,6 +34,7 @@ public:
 	double *r = nullptr;
 
 	double a, b, c, d;
+	double a_constantin, b_constantin, c_constantin, d_constantin;
 	double eps;
     int func_id;
 	int nx, ny, mx, my;
