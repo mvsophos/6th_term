@@ -4,7 +4,7 @@
 #include <QtWidgets/QtWidgets>
 #include "thread.h"
 
-#define DEF_ABS_MIN 1e-50
+#define DEF_ABS_MIN -1e+10
 
 class Window : public QWidget {
     Q_OBJECT
